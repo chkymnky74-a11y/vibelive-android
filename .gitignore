@@ -1,0 +1,8 @@
+# Ignore these in git. They are rebuilt by the workflow or private to a machine.
+node_modules/
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+*.keystore
+*.jks
