@@ -1,0 +1,75 @@
+# VibeLive Android — free cloud build (GitHub Actions)
+#
+# Builds the VibeLive Android app in the cloud because Gradle cannot run
+# in the local VM (Java cross-process loopback TCP is blocked there).
+# Package: com.shelleywrites.vibelive, version 0.1.0, versionCode 1.
+#
+# The release AAB built here is UNSIGNED on purpose. Signing is a later
+# secure step (upload keystore + Play App Signing). Nothing here spends
+# money, submits anything to Play Console, or contains any secret: only
+# the public Supabase publishable key ships in the app, exactly as in
+# the web version.
+
+name: Build VibeLive Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+
+      - name: Set up the Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install the app's Node packages
+        run: npm ci
+
+      - name: Sync the web app into the Android project
+        run: npx cap sync android
+
+      - name: Make the Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      - name: Build the debug APK
+        run: ./gradlew assembleDebug --no-daemon --max-workers=1
+        working-directory: android
+
+      - name: Build the unsigned release AAB
+        run: ./gradlew bundleRelease --no-daemon --max-workers=1
+        working-directory: android
+
+      - name: Check what was built
+        run: |
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/app/build/outputs/bundle/release/app-release.aab
+          unzip -l android/app/build/outputs/bundle/release/app-release.aab | grep -E "base/assets/public/index.html|AndroidManifest.xml" || true
+
+      - name: Save the debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibelive-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Save the unsigned release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibelive-release-aab-unsigned
+          path: android/app/build/outputs/bundle/release/app-release.aab
