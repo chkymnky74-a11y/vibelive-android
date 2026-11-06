@@ -36,8 +36,12 @@ jobs:
           java-version: "17"
           distribution: temurin
 
-      - name: Set up the Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install the Android packages we need
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMANAGER" ] || SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/16.0/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Install the app's Node packages
         run: npm ci
