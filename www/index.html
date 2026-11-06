@@ -1,0 +1,2066 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>VibeLive Web</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.15.0/dist/livekit-client.umd.min.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0b10;
+        --bg2: #12121a;
+        --surface: #17171f;
+        --surface2: #1f1f2a;
+        --line: #2a2a38;
+        --text: #f5f3f7;
+        --dim: #b9b4c4;
+        --faint: #8b8598;
+        --brand1: #ff2e63;
+        --brand2: #ff7a18;
+        --good: #2fd67c;
+        --bad: #ff5470;
+        --gold: #ffc93c;
+        --radius: 18px;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Manrope", system-ui, -apple-system, sans-serif;
+        font-size: 17px;
+        line-height: 1.5;
+        min-height: 100dvh;
+      }
+      h1, h2, h3, .display { font-family: "Sora", "Manrope", sans-serif; }
+      button { font: inherit; cursor: pointer; }
+      input, textarea, select { font: inherit; color: var(--text); }
+      a { color: var(--brand2); }
+      .brand-grad { background: linear-gradient(120deg, var(--brand1), var(--brand2)); }
+      .brand-text {
+        background: linear-gradient(120deg, var(--brand1), var(--brand2));
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      /* ---------- layout ---------- */
+      #app { max-width: 860px; margin: 0 auto; padding: 0 16px calc(96px + env(safe-area-inset-bottom)); }
+      .topbar {
+        position: sticky; top: 0; z-index: 30;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 14px 2px 10px;
+        background: linear-gradient(var(--bg) 78%, transparent);
+      }
+      .logo { font-family: "Sora", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
+      .logo .dot { color: var(--brand1); }
+      .wallet-chip {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: var(--surface2); border: 1px solid var(--line);
+        border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 15px;
+        color: var(--text); min-height: 44px;
+      }
+      .coin-ic { width: 18px; height: 18px; border-radius: 50%; flex: none;
+        background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--gold) 55%, #d99a00);
+        box-shadow: inset 0 0 0 2px rgba(0,0,0,.18); }
+      /* ---------- bottom nav ---------- */
+      #nav {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        background: rgba(14,14,20,.96); backdrop-filter: blur(10px);
+        border-top: 1px solid var(--line);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      #nav .row { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+      .nav-btn {
+        background: none; border: 0; color: var(--dim);
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        padding: 9px 2px 7px; font-size: 12px; font-weight: 700; min-height: 62px;
+        position: relative;
+      }
+      .nav-btn svg { width: 25px; height: 25px; }
+      .nav-btn.active { color: #fff; }
+      .nav-btn.active svg { stroke: url(#navGrad); }
+      .nav-badge {
+        position: absolute; top: 5px; right: calc(50% - 24px);
+        background: var(--brand1); color: #fff; font-size: 11px; font-weight: 800;
+        min-width: 20px; height: 20px; border-radius: 999px; padding: 0 5px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .nav-live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--brand1); }
+      /* ---------- generic ---------- */
+      .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        border: 0; border-radius: 999px; padding: 13px 22px; min-height: 52px;
+        font-weight: 800; font-size: 16px; color: #fff; background: var(--surface2);
+      }
+      .btn.primary { background: linear-gradient(120deg, var(--brand1), var(--brand2)); color: #fff; }
+      .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+      .btn.danger { background: #3a1220; color: #ff8fa5; border: 1px solid #5c1a2e; }
+      .btn.small { min-height: 44px; padding: 9px 16px; font-size: 14px; }
+      .btn:disabled { opacity: .55; cursor: default; }
+      .btn.block { width: 100%; }
+      .field { margin-bottom: 14px; }
+      .field label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--dim); }
+      .input, .textarea, .select {
+        width: 100%; background: var(--bg2); border: 1px solid var(--line);
+        border-radius: 14px; padding: 13px 14px; min-height: 52px; outline: none;
+      }
+      .textarea { min-height: 84px; resize: vertical; }
+      .input:focus, .textarea:focus, .select:focus { border-color: var(--brand1); }
+      .muted { color: var(--dim); }
+      .faint { color: var(--faint); }
+      .small { font-size: 14px; }
+      .empty {
+        text-align: center; padding: 38px 22px; border: 1.5px dashed var(--line);
+        border-radius: var(--radius); color: var(--dim); background: var(--bg2);
+      }
+      .empty .big { font-size: 19px; font-weight: 800; color: var(--text); margin-bottom: 6px; font-family: "Sora", sans-serif; }
+      .spinner {
+        width: 38px; height: 38px; border-radius: 50%; margin: 34px auto;
+        border: 4px solid var(--line); border-top-color: var(--brand1);
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .err-box { background: #2b0f18; border: 1px solid #5c1a2e; color: #ffb3c1; border-radius: 14px; padding: 12px 14px; font-size: 15px; }
+      .ok-box { background: #0e2417; border: 1px solid #1d4d2e; color: #a9ecc4; border-radius: 14px; padding: 12px 14px; font-size: 15px; }
+      #toast {
+        position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
+        bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 90;
+        background: #23232f; border: 1px solid var(--line); color: var(--text);
+        padding: 12px 18px; border-radius: 999px; font-weight: 700; font-size: 15px;
+        opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+        max-width: calc(100vw - 32px); text-align: center;
+      }
+      #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      #offlineBar {
+        display: none; background: #3a2a08; color: #ffd98a; text-align: center;
+        font-size: 14px; font-weight: 700; padding: 8px 12px;
+      }
+      #offlineBar.show { display: block; }
+      .avatar { border-radius: 50%; object-fit: cover; background: var(--surface2); flex: none; }
+      .avatar-fallback {
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-family: "Sora", sans-serif; font-weight: 800; color: #fff; flex: none;
+        background: linear-gradient(135deg, #53386e, #2b4a6f);
+      }
+      .live-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--brand1); color: #fff; font-size: 12px; font-weight: 800;
+        border-radius: 999px; padding: 4px 10px; letter-spacing: .4px;
+      }
+      .live-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.4s infinite; }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+      .chip {
+        display: inline-block; background: var(--surface2); border: 1px solid var(--line);
+        border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: var(--dim);
+      }
+      /* ---------- auth ---------- */
+      #authView { max-width: 460px; margin: 0 auto; padding: 26px 16px 40px; }
+      .auth-hero { text-align: center; padding: 18px 0 8px; }
+      .auth-hero .logo { font-size: 44px; }
+      .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px; margin: 20px 0; }
+      .auth-tabs button { border: 0; border-radius: 999px; min-height: 48px; font-weight: 800; background: transparent; color: var(--dim); }
+      .auth-tabs button.on { background: linear-gradient(120deg, var(--brand1), var(--brand2)); color: #fff; }
+      /* ---------- home ---------- */
+      .stream-card { padding: 0; overflow: hidden; text-align: left; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); }
+      .stream-thumb {
+        height: 168px; position: relative; display: flex; align-items: flex-end; padding: 12px;
+        background:
+          radial-gradient(120% 130% at 15% 0%, rgba(255,46,99,.5), transparent 55%),
+          radial-gradient(120% 130% at 90% 100%, rgba(255,122,24,.45), transparent 55%),
+          linear-gradient(160deg, #241b33, #141019);
+      }
+      .stream-thumb img.cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .stream-thumb .shade { position: absolute; inset: 0; background: linear-gradient(transparent 40%, rgba(0,0,0,.72)); }
+      .stream-meta { padding: 13px 15px 15px; display: flex; gap: 12px; align-items: flex-start; }
+      .post { margin-top: 14px; }
+      .post-head { display: flex; gap: 11px; align-items: center; }
+      .post-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      .icon-btn {
+        display: inline-flex; align-items: center; gap: 7px; background: var(--bg2);
+        border: 1px solid var(--line); color: var(--dim); border-radius: 999px;
+        padding: 8px 14px; min-height: 44px; font-weight: 700; font-size: 14px;
+      }
+      .icon-btn.liked { color: #ff6d8d; border-color: #5c1a2e; }
+      .comment { border-top: 1px solid var(--line); padding: 10px 0 2px; margin-top: 10px; }
+      .section-title { font-size: 21px; font-weight: 800; margin: 26px 0 12px; }
+      /* ---------- discover ---------- */
+      .person-row { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 15px; color: var(--text); }
+      .online-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--good); display: inline-block; flex: none; }
+      /* ---------- overlays ---------- */
+      .overlay {
+        position: fixed; inset: 0; z-index: 60; background: var(--bg);
+        overflow-y: auto; overscroll-behavior: contain;
+      }
+      .overlay-inner { max-width: 860px; margin: 0 auto; padding: 0 16px calc(30px + env(safe-area-inset-bottom)); }
+      .overlay-bar {
+        position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px;
+        padding: 12px 0 10px; background: linear-gradient(var(--bg) 80%, transparent);
+      }
+      .back-btn {
+        display: inline-flex; align-items: center; gap: 6px; background: var(--surface2);
+        border: 1px solid var(--line); color: var(--text); border-radius: 999px;
+        padding: 10px 16px; min-height: 48px; font-weight: 800;
+      }
+      .cover-img { width: 100%; height: 190px; object-fit: cover; border-radius: var(--radius); background: linear-gradient(140deg,#33203f,#17222e); display: block; }
+      .stat-row { display: flex; gap: 26px; }
+      .stat b { font-size: 20px; font-family: "Sora", sans-serif; }
+      .stat span { display: block; font-size: 13px; color: var(--faint); font-weight: 700; }
+      /* ---------- messages ---------- */
+      .conv-row { display: flex; gap: 13px; align-items: center; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 15px; color: var(--text); }
+      .unread-badge { background: var(--brand1); color: #fff; font-size: 12px; font-weight: 800; min-width: 24px; height: 24px; border-radius: 999px; display: flex; align-items: center; justify-content: center; padding: 0 7px; }
+      .chat-wrap { display: flex; flex-direction: column; height: 100dvh; max-width: 860px; margin: 0 auto; padding: 0 16px; }
+      .chat-scroll { flex: 1; overflow-y: auto; padding: 8px 0 14px; }
+      .bubble { max-width: 82%; padding: 11px 15px; border-radius: 20px; margin: 5px 0; font-size: 16px; overflow-wrap: anywhere; }
+      .bubble.mine { margin-left: auto; background: linear-gradient(120deg, var(--brand1), var(--brand2)); color: #fff; border-bottom-right-radius: 6px; }
+      .bubble.theirs { margin-right: auto; background: var(--surface2); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+      .chat-input-row { display: flex; gap: 9px; padding: 10px 0 calc(12px + env(safe-area-inset-bottom)); }
+      .chat-input-row .input { flex: 1; }
+      .send-btn { width: 52px; height: 52px; border-radius: 50%; border: 0; flex: none; display: flex; align-items: center; justify-content: center; background: linear-gradient(120deg, var(--brand1), var(--brand2)); color: #fff; }
+      /* ---------- go live / filters ---------- */
+      .preview-box { position: relative; border-radius: 22px; overflow: hidden; background: #000; aspect-ratio: 3/4; max-height: 54vh; width: 100%; }
+      @media (min-width: 700px) { .preview-box { aspect-ratio: 16/9; max-height: none; } }
+      .preview-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+      .preview-tag { position: absolute; left: 12px; top: 12px; background: rgba(0,0,0,.62); color: #fff; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 6px 12px; }
+      .filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: none; }
+      .filter-row::-webkit-scrollbar { display: none; }
+      .filter-chip { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 11px 17px; min-height: 48px; font-weight: 800; font-size: 14px; }
+      .filter-chip.on { background: linear-gradient(120deg, var(--brand1), var(--brand2)); color: #fff; border-color: transparent; }
+      input[type="range"] { width: 100%; accent-color: var(--brand1); height: 34px; }
+      .cat-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      /* ---------- stream room ---------- */
+      #roomOverlay { background: #050508; }
+      .room-stage { position: relative; border-radius: 22px; overflow: hidden; background: #000; min-height: 300px; }
+      .room-stage video { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .tile-grid { display: grid; gap: 8px; }
+      .tile { position: relative; border-radius: 16px; overflow: hidden; background: #101018; aspect-ratio: 3/4; }
+      @media (min-width: 700px) { .tile { aspect-ratio: 16/10; } }
+      .tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .tile .who { position: absolute; left: 9px; bottom: 9px; background: rgba(0,0,0,.65); color: #fff; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 4px 11px; display: flex; gap: 7px; align-items: center; max-width: calc(100% - 18px); }
+      .tile .no-cam { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      .conn-pill { font-size: 13px; font-weight: 800; border-radius: 999px; padding: 6px 13px; background: var(--surface2); border: 1px solid var(--line); }
+      .conn-pill.ok { color: #8df0b6; } .conn-pill.warn { color: #ffd98a; } .conn-pill.bad { color: #ff9db1; }
+      .room-controls { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+      .ctl-btn { flex: 1 1 30%; min-height: 54px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-weight: 800; font-size: 15px; padding: 10px 8px; }
+      .ctl-btn.off { color: #ff9db1; border-color: #5c1a2e; }
+      .quick-exit { background: linear-gradient(120deg, #ff2e63, #c40e3a); border: 0; color: #fff; }
+      .stream-chat { height: 240px; overflow-y: auto; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+      .stream-chat p { margin: 0 0 8px; font-size: 15px; overflow-wrap: anywhere; }
+      .part-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; color: var(--text); min-height: 58px; }
+      /* ---------- gifts ---------- */
+      .gift-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+      .gift-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 13px 8px 11px; text-align: center; color: var(--text); }
+      .gift-card svg { width: 46px; height: 46px; }
+      .gift-card .gname { font-weight: 800; font-size: 14px; margin-top: 6px; }
+      .gift-card .gprice { color: var(--gold); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 2px; }
+      .gift-card .gprice .coin-ic { width: 13px; height: 13px; }
+      .gift-card:disabled { opacity: .5; }
+      #giftFx { position: fixed; inset: 0; z-index: 80; display: none; align-items: center; justify-content: center; pointer-events: none; }
+      #giftFx.show { display: flex; }
+      #giftFx .fx-inner { text-align: center; animation: fxpop 2.6s ease forwards; }
+      #giftFx svg { width: 150px; height: 150px; filter: drop-shadow(0 12px 34px rgba(255,46,99,.45)); }
+      #giftFx .fx-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 24px; margin-top: 10px; text-shadow: 0 2px 14px rgba(0,0,0,.8); }
+      @keyframes fxpop { 0% { transform: scale(.4) translateY(46px); opacity: 0; } 14% { transform: scale(1.08) translateY(0); opacity: 1; } 24% { transform: scale(1); } 78% { opacity: 1; } 100% { transform: scale(1.04) translateY(-26px); opacity: 0; } }
+      /* ---------- sheet ---------- */
+      .sheet-back { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.66); display: flex; align-items: flex-end; justify-content: center; }
+      .sheet { background: var(--bg2); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0; width: 100%; max-width: 640px; max-height: 86dvh; overflow-y: auto; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
+      .sheet h3 { margin: 0 0 6px; font-size: 20px; }
+      /* ---------- wallet / profile ---------- */
+      .balance-hero { text-align: center; padding: 26px 16px; }
+      .balance-hero .amt { font-family: "Sora", sans-serif; font-size: 46px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; }
+      .balance-hero .amt .coin-ic { width: 34px; height: 34px; }
+      .tx-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--line); }
+      .tx-amt.pos { color: var(--good); font-weight: 800; } .tx-amt.neg { color: #ff8fa5; font-weight: 800; }
+      .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; color: var(--text); font-weight: 800; min-height: 60px; margin-top: 10px; }
+      .switch { width: 58px; height: 34px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--line); position: relative; flex: none; padding: 0; }
+      .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #8b8598; transition: all .2s; }
+      .switch.on { background: linear-gradient(120deg, var(--brand1), var(--brand2)); border-color: transparent; }
+      .switch.on::after { left: 27px; background: #fff; }
+      .hidden { display: none !important; }
+      .stack > * + * { margin-top: 12px; }
+      .row-gap { display: flex; gap: 10px; flex-wrap: wrap; }
+      .mt { margin-top: 16px; } .mb { margin-bottom: 14px; }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <linearGradient id="navGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ff2e63" /><stop offset="1" stop-color="#ff7a18" />
+        </linearGradient>
+      </defs>
+    </svg>
+    <div id="offlineBar">You're offline — changes can't load or save right now.</div>
+
+    <!-- ============ AUTH ============ -->
+    <div id="authView" class="hidden">
+      <div class="auth-hero">
+        <div class="logo">Vibe<span class="brand-text">Live</span></div>
+        <p class="muted" style="margin:8px 0 0">Go live, meet people, send gifts — all real, all yours.</p>
+      </div>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" id="tabSignIn" class="on">Sign in</button>
+        <button type="button" id="tabSignUp">Create account</button>
+      </div>
+      <div id="authMsg"></div>
+      <form id="authForm" autocomplete="on">
+        <div class="field">
+          <label for="authEmail">Email</label>
+          <input class="input" id="authEmail" type="email" required autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="authPass">Password</label>
+          <input class="input" id="authPass" type="password" required autocomplete="current-password" placeholder="Your password" />
+        </div>
+        <button class="btn primary block" type="submit" id="authSubmit" style="min-height:58px;font-size:17px">Sign in</button>
+      </form>
+      <p class="small faint" style="text-align:center;margin-top:18px">
+        New accounts confirm their email before the first sign-in — that's what keeps fake accounts out.
+      </p>
+    </div>
+
+    <!-- ============ APP SHELL ============ -->
+    <div id="shell" class="hidden">
+      <div id="app">
+        <div class="topbar">
+          <div class="logo">Vibe<span class="brand-text">Live</span></div>
+          <button type="button" class="wallet-chip" id="topWallet" aria-label="Open your wallet">
+            <span class="coin-ic"></span><span id="topBalance">–</span>
+          </button>
+        </div>
+        <main id="viewRoot"></main>
+      </div>
+      <nav id="nav" aria-label="Main">
+        <div class="row">
+          <button type="button" class="nav-btn" data-nav="home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+            Home
+          </button>
+          <button type="button" class="nav-btn" data-nav="discover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+            Discover
+          </button>
+          <button type="button" class="nav-btn" data-nav="golive">
+            <span class="nav-live-dot"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 10.5 21.5 7v10l-6-3.5"/></svg>
+            Go Live
+          </button>
+          <button type="button" class="nav-btn" data-nav="messages">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2.3-2.9A8 8 0 1 1 21 12Z"/></svg>
+            Messages<span class="nav-badge hidden" id="msgBadge">0</span>
+          </button>
+          <button type="button" class="nav-btn" data-nav="profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+            Profile
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <div id="overlayRoot"></div>
+    <div id="sheetRoot"></div>
+    <div id="giftFx" aria-hidden="true"></div>
+    <div id="toast" role="status"></div>
+
+    <div id="bootView">
+      <div style="text-align:center;padding:70px 20px">
+        <div class="logo" style="font-size:38px">Vibe<span class="brand-text">Live</span></div>
+        <div class="spinner" id="bootSpinner"></div>
+        <p class="muted" id="bootMsg">Connecting…</p>
+      </div>
+    </div>
+
+    <script>
+    "use strict";
+    /* =====================================================================
+       VibeLive Web — talks directly from this browser to the real backend:
+       Supabase (auth, database, storage, realtime) + LiveKit (streaming).
+       Only the public publishable key lives here; RLS protects all data.
+       LiveKit tokens come from the livekit-token Edge Function, requested
+       with the signed-in user's own access token.
+       ===================================================================== */
+    var SUPABASE_URL = "https://iqrefsaqtxoynzkhlfed.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_JzIRv1nfHiSGJ156V5xZXA_2eirDIqC";
+    var LIVEKIT_URL = "wss://vibelive-fvzu5m96.livekit.cloud";
+
+    var sb = null;
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (e) { sb = null; }
+
+    /* ---------------- state ---------------- */
+    var me = null;               // my profile row
+    var mySession = null;
+    var profileCache = {};       // id -> profile
+    var blockedIds = {};         // ids I blocked
+    var currentView = "home";
+    var navSerial = 0;           // guards against stale async renders
+    var unreadTotal = 0;
+    var listChannel = null;      // realtime channel for conversation list
+
+    /* ---------------- helpers ---------------- */
+    function $(sel, root) { return (root || document).querySelector(sel); }
+    function el(html) { var d = document.createElement("div"); d.innerHTML = html; return d.firstElementChild; }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function errText(e) {
+      if (!e) return "Something went wrong.";
+      if (typeof e === "string") return e;
+      if (e.message) return e.message;
+      return "Something went wrong.";
+    }
+    function newUuid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        var r = (Math.random() * 16) | 0, v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    }
+    function timeAgo(iso) {
+      if (!iso) return "";
+      var then = new Date(iso).getTime();
+      if (isNaN(then)) return "";
+      var secs = Math.max(0, Math.floor((Date.now() - then) / 1000));
+      if (secs < 45) return "now";
+      var mins = Math.floor(secs / 60);
+      if (mins < 60) return mins + "m";
+      var hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + "h";
+      var days = Math.floor(hrs / 24);
+      if (days < 7) return days + "d";
+      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+    function displayName(p) {
+      if (!p) return "Someone";
+      return (p.display_name && p.display_name.trim()) || p.username || "Someone";
+    }
+    var toastTimer = null;
+    function toast(msg) {
+      var t = $("#toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.remove("show"); }, 3400);
+    }
+    function avatarHtml(p, size) {
+      size = size || 48;
+      if (p && p.avatar_url) {
+        return '<img class="avatar" src="' + esc(p.avatar_url) + '" alt="" width="' + size + '" height="' + size + '" style="width:' + size + 'px;height:' + size + 'px" loading="lazy" />';
+      }
+      var initial = esc((displayName(p) || "?").charAt(0).toUpperCase());
+      return '<span class="avatar-fallback" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.42) + 'px">' + initial + "</span>";
+    }
+    function cacheProfiles(list) {
+      (list || []).forEach(function (p) { if (p && p.id) profileCache[p.id] = p; });
+    }
+    async function fetchProfiles(ids) {
+      var want = [];
+      var seen = {};
+      (ids || []).forEach(function (id) {
+        if (id && !profileCache[id] && !seen[id]) { seen[id] = 1; want.push(id); }
+      });
+      if (want.length) {
+        var res = await sb.from("profiles").select("*").in("id", want);
+        if (!res.error) cacheProfiles(res.data);
+      }
+      var out = {};
+      (ids || []).forEach(function (id) { if (profileCache[id]) out[id] = profileCache[id]; });
+      return out;
+    }
+    function onlineHtml(p) {
+      if (p && p.show_online !== false && p.is_online) return '<span class="online-dot" title="Online now"></span>';
+      return "";
+    }
+
+    /* ---------------- sheets ---------------- */
+    function openSheet(html) {
+      closeSheet();
+      var back = el('<div class="sheet-back"><div class="sheet" role="dialog"></div></div>');
+      back.querySelector(".sheet").innerHTML = html;
+      back.addEventListener("click", function (e) { if (e.target === back) closeSheet(); });
+      $("#sheetRoot").appendChild(back);
+      return back.querySelector(".sheet");
+    }
+    function closeSheet() { $("#sheetRoot").innerHTML = ""; }
+
+    function reportSheet(targetType, targetId, reportedUserId) {
+      var sheet = openSheet(
+        "<h3>Report</h3>" +
+        '<p class="muted small">Tell us what happened. Reports go to the moderation queue and are never shown to the other person.</p>' +
+        '<div class="field"><label for="repReason">Reason</label>' +
+        '<select class="select" id="repReason">' +
+        "<option>Harassment or bullying</option><option>Spam or scam</option>" +
+        "<option>Inappropriate content</option><option>Impersonation</option><option>Something else</option>" +
+        "</select></div>" +
+        '<div class="field"><label for="repDetails">Details (optional)</label>' +
+        '<textarea class="textarea" id="repDetails" maxlength="1000" placeholder="Anything that helps us review this"></textarea></div>' +
+        '<div class="row-gap"><button class="btn primary" id="repSend" style="flex:1">Send report</button>' +
+        '<button class="btn ghost" id="repCancel" style="flex:1">Cancel</button></div>'
+      );
+      sheet.querySelector("#repCancel").addEventListener("click", closeSheet);
+      sheet.querySelector("#repSend").addEventListener("click", async function () {
+        var btn = this; btn.disabled = true; btn.textContent = "Sending…";
+        var res = await sb.from("reports").insert({
+          reporter_id: me.id,
+          reported_user_id: reportedUserId || null,
+          target_type: targetType,
+          target_id: targetId || null,
+          reason: sheet.querySelector("#repReason").value,
+          details: sheet.querySelector("#repDetails").value.trim() || null,
+          status: "open"
+        });
+        if (res.error) { toast("Report failed: " + errText(res.error)); btn.disabled = false; btn.textContent = "Send report"; return; }
+        closeSheet();
+        toast("Report sent. Thank you — a moderator will review it.");
+      });
+    }
+
+    async function toggleBlock(profile, btn) {
+      if (blockedIds[profile.id]) {
+        var d = await sb.from("blocks").delete().eq("blocker_id", me.id).eq("blocked_id", profile.id);
+        if (d.error) { toast(errText(d.error)); return; }
+        delete blockedIds[profile.id];
+        toast("Unblocked " + displayName(profile) + ".");
+      } else {
+        var i = await sb.from("blocks").insert({ blocker_id: me.id, blocked_id: profile.id });
+        if (i.error) { toast(errText(i.error)); return; }
+        blockedIds[profile.id] = 1;
+        toast(displayName(profile) + " is blocked. You won't see each other.");
+      }
+      if (btn) btn.textContent = blockedIds[profile.id] ? "Unblock" : "Block";
+    }
+
+    /* ---------------- boot / auth ---------------- */
+    function showBoot(msg) {
+      $("#bootView").classList.remove("hidden");
+      $("#authView").classList.add("hidden");
+      $("#shell").classList.add("hidden");
+      if (msg) $("#bootMsg").textContent = msg;
+    }
+    function showAuth() {
+      $("#bootView").classList.add("hidden");
+      $("#shell").classList.add("hidden");
+      $("#authView").classList.remove("hidden");
+    }
+    function showShell() {
+      $("#bootView").classList.add("hidden");
+      $("#authView").classList.add("hidden");
+      $("#shell").classList.remove("hidden");
+    }
+
+    var authMode = "in";
+    function setAuthMode(mode) {
+      authMode = mode;
+      $("#tabSignIn").classList.toggle("on", mode === "in");
+      $("#tabSignUp").classList.toggle("on", mode === "up");
+      $("#authSubmit").textContent = mode === "in" ? "Sign in" : "Create my account";
+      $("#authPass").setAttribute("autocomplete", mode === "in" ? "current-password" : "new-password");
+      $("#authMsg").innerHTML = "";
+    }
+    function authMessage(html, ok) {
+      $("#authMsg").innerHTML = '<div class="' + (ok ? "ok-box" : "err-box") + '" style="margin-bottom:14px">' + html + "</div>";
+    }
+
+    async function loadMyProfile(userId) {
+      // The signup trigger creates the profile; retry briefly in case it lags.
+      for (var attempt = 0; attempt < 4; attempt++) {
+        var res = await sb.from("profiles").select("*").eq("id", userId).maybeSingle();
+        if (res.data) { me = res.data; profileCache[me.id] = me; return true; }
+        await new Promise(function (r) { setTimeout(r, 700); });
+      }
+      return false;
+    }
+
+    async function enterApp(session) {
+      mySession = session;
+      var ok = await loadMyProfile(session.user.id);
+      if (!ok) {
+        authMessage("You're signed in, but your profile couldn't be loaded. Check your connection and try again.");
+        showAuth();
+        return;
+      }
+      var b = await sb.from("blocks").select("blocked_id").eq("blocker_id", me.id);
+      blockedIds = {};
+      if (!b.error) (b.data || []).forEach(function (r) { blockedIds[r.blocked_id] = 1; });
+      sb.from("profiles").update({ is_online: true, last_seen_at: new Date().toISOString() }).eq("id", me.id).then(function () {});
+      showShell();
+      refreshWalletChip();
+      navigate("home");
+      startListRealtime();
+      refreshUnread();
+    }
+
+    async function refreshWalletChip() {
+      if (!me) return;
+      var res = await sb.from("wallets").select("balance").eq("user_id", me.id).maybeSingle();
+      if (!res.error && res.data) $("#topBalance").textContent = Number(res.data.balance).toLocaleString();
+    }
+
+    async function doSignOut() {
+      try {
+        if (me) await sb.from("profiles").update({ is_online: false, last_seen_at: new Date().toISOString() }).eq("id", me.id);
+      } catch (e) {}
+      stopListRealtime();
+      await sb.auth.signOut();
+      me = null; mySession = null; profileCache = {}; blockedIds = {};
+      $("#overlayRoot").innerHTML = "";
+      showAuth();
+      setAuthMode("in");
+    }
+
+    function initAuth() {
+      $("#tabSignIn").addEventListener("click", function () { setAuthMode("in"); });
+      $("#tabSignUp").addEventListener("click", function () { setAuthMode("up"); });
+      $("#authForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var email = $("#authEmail").value.trim();
+        var pass = $("#authPass").value;
+        var btn = $("#authSubmit");
+        if (!email || !pass) return;
+        btn.disabled = true;
+        btn.textContent = authMode === "in" ? "Signing in…" : "Creating account…";
+        $("#authMsg").innerHTML = "";
+        try {
+          if (authMode === "up") {
+            var res = await sb.auth.signUp({ email: email, password: pass });
+            if (res.error) throw res.error;
+            if (res.data.session) {
+              // Email confirmation off or auto-confirmed: straight in.
+              await enterApp(res.data.session);
+            } else if (res.data.user && res.data.user.identities && res.data.user.identities.length === 0) {
+              authMessage("That email already has an account. Switch to <b>Sign in</b> above.");
+            } else {
+              authMessage("Account created! <b>Check your email</b> (" + esc(email) + ") and tap the confirmation link, then come back and sign in.", true);
+              setAuthMode("in");
+              $("#authEmail").value = email;
+            }
+          } else {
+            var res2 = await sb.auth.signInWithPassword({ email: email, password: pass });
+            if (res2.error) {
+              var m = errText(res2.error);
+              if (/not confirmed/i.test(m)) {
+                authMessage("That email isn't confirmed yet. Open the confirmation email we sent to <b>" + esc(email) + "</b>, tap the link inside, then sign in here.");
+              } else if (/invalid login/i.test(m)) {
+                authMessage("That email and password don't match an account. Check for typos — or create an account if you're new.");
+              } else {
+                authMessage(esc(m));
+              }
+              return;
+            }
+            await enterApp(res2.data.session);
+          }
+        } catch (err) {
+          authMessage(esc(errText(err)));
+        } finally {
+          btn.disabled = false;
+          btn.textContent = authMode === "in" ? "Sign in" : "Create my account";
+        }
+      });
+    }
+
+    /* ---------------- navigation ---------------- */
+    function navigate(view) {
+      currentView = view;
+      var serial = ++navSerial;
+      document.querySelectorAll(".nav-btn").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.nav === view);
+      });
+      closeSheet();
+      var root = $("#viewRoot");
+      root.innerHTML = '<div class="spinner"></div>';
+      window.scrollTo(0, 0);
+      var done = function (node) {
+        if (serial !== navSerial) return;
+        root.innerHTML = "";
+        root.appendChild(node);
+        afterRender(view);
+      };
+      if (view === "home") renderHome(done);
+      else if (view === "discover") renderDiscover(done);
+      else if (view === "golive") renderGoLive(done);
+      else if (view === "messages") renderMessages(done);
+      else if (view === "profile") renderMyProfile(done);
+    }
+    function afterRender(view) {
+      if (view === "golive") startPreview();
+      else stopPreview();
+    }
+    document.querySelectorAll(".nav-btn").forEach(function (b) {
+      b.addEventListener("click", function () { navigate(b.dataset.nav); });
+    });
+    $("#topWallet").addEventListener("click", function () { openWallet(); });
+
+    /* ---------------- HOME ---------------- */
+    async function renderHome(done) {
+      var wrap = el("<div></div>");
+      var results = await Promise.all([
+        sb.from("streams").select("*").eq("status", "live").order("started_at", { ascending: false }).limit(30),
+        sb.from("posts").select("*").order("created_at", { ascending: false }).limit(50)
+      ]);
+      var streamsRes = results[0], postsRes = results[1];
+
+      /* live now */
+      var liveSec = el('<section><h2 class="section-title" style="margin-top:10px">Live now</h2></section>');
+      var liveList = el("<div class='stack'></div>");
+      liveSec.appendChild(liveList);
+      wrap.appendChild(liveSec);
+      if (streamsRes.error) {
+        liveList.appendChild(el('<div class="err-box">Live streams couldn\'t load: ' + esc(errText(streamsRes.error)) + "</div>"));
+      } else {
+        var streams = (streamsRes.data || []).filter(function (s) { return !blockedIds[s.host_id]; });
+        if (!streams.length) {
+          liveList.appendChild(el('<div class="empty"><div class="big">No one is live yet</div>Tap <b>Go Live</b> below to be the first.</div>'));
+        } else {
+          var hosts = await fetchProfiles(streams.map(function (s) { return s.host_id; }));
+          streams.forEach(function (s) {
+            var host = hosts[s.host_id];
+            var card = el(
+              '<button type="button" class="stream-card">' +
+                '<span class="stream-thumb">' +
+                  (host && host.cover_url ? '<img class="cover" src="' + esc(host.cover_url) + '" alt="" />' : "") +
+                  '<span class="shade"></span>' +
+                  '<span class="live-pill" style="position:relative">LIVE</span>' +
+                  (s.category ? '<span class="chip" style="position:relative;background:rgba(0,0,0,.55);color:#fff;border-color:transparent">' + esc(s.category) + "</span>" : "") +
+                "</span>" +
+                '<span class="stream-meta">' + avatarHtml(host, 46) +
+                  '<span style="min-width:0"><span style="display:block;font-weight:800;font-size:17px;overflow-wrap:anywhere">' + esc(s.title) + "</span>" +
+                  '<span class="muted small" style="display:block">' + esc(displayName(host)) + " · @" + esc(host ? host.username : "") + " · started " + esc(timeAgo(s.started_at)) + " ago</span></span>" +
+                "</span>" +
+              "</button>"
+            );
+            card.addEventListener("click", function () { openStreamRoom(s, s.host_id === me.id ? "host" : "viewer"); });
+            liveList.appendChild(card);
+          });
+        }
+      }
+
+      /* composer */
+      var composer = el(
+        '<section class="card mt"><h2 style="margin:0 0 10px;font-size:19px">Share something</h2>' +
+        '<textarea class="textarea" id="postBody" maxlength="1000" placeholder="What\'s happening?"></textarea>' +
+        '<div id="postPhotoName" class="small faint" style="margin-top:6px"></div>' +
+        '<div class="row-gap mt"><label class="btn ghost small" for="postPhoto" style="cursor:pointer">Add a photo</label>' +
+        '<input type="file" id="postPhoto" accept="image/*" class="hidden" />' +
+        '<button type="button" class="btn primary small" id="postBtn" style="flex:1">Post</button></div></section>'
+      );
+      wrap.appendChild(composer);
+      var photoFile = null;
+      composer.querySelector("#postPhoto").addEventListener("change", function () {
+        photoFile = this.files && this.files[0] ? this.files[0] : null;
+        composer.querySelector("#postPhotoName").textContent = photoFile ? photoFile.name : "";
+      });
+      composer.querySelector("#postBtn").addEventListener("click", async function () {
+        var btn = this;
+        var body = composer.querySelector("#postBody").value.trim();
+        if (!body && !photoFile) { toast("Write something or add a photo first."); return; }
+        btn.disabled = true; btn.textContent = "Posting…";
+        try {
+          var mediaUrl = null;
+          if (photoFile) {
+            var path = me.id + "/" + newUuid() + "-" + photoFile.name.replace(/[^\w.\-]+/g, "_");
+            var up = await sb.storage.from("post-media").upload(path, photoFile);
+            if (up.error) throw up.error;
+            mediaUrl = sb.storage.from("post-media").getPublicUrl(path).data.publicUrl;
+          }
+          var ins = await sb.from("posts").insert({ author_id: me.id, body: body, media_url: mediaUrl, media_type: mediaUrl ? "image" : null });
+          if (ins.error) throw ins.error;
+          toast("Posted!");
+          navigate("home");
+        } catch (e) {
+          toast("Post failed: " + errText(e));
+          btn.disabled = false; btn.textContent = "Post";
+        }
+      });
+
+      /* feed */
+      var feedSec = el('<section><h2 class="section-title">Feed</h2></section>');
+      var feed = el("<div></div>");
+      feedSec.appendChild(feed);
+      wrap.appendChild(feedSec);
+      if (postsRes.error) {
+        feed.appendChild(el('<div class="err-box">Posts couldn\'t load: ' + esc(errText(postsRes.error)) + "</div>"));
+      } else {
+        var posts = (postsRes.data || []).filter(function (p) { return !blockedIds[p.author_id]; });
+        if (!posts.length) {
+          feed.appendChild(el('<div class="empty"><div class="big">No posts yet</div>Be the first to share something above.</div>'));
+        } else {
+          var authors = await fetchProfiles(posts.map(function (p) { return p.author_id; }));
+          var ids = posts.map(function (p) { return p.id; });
+          var likeRes = await sb.from("post_likes").select("post_id, user_id").in("post_id", ids);
+          var commentRes = await sb.from("post_comments").select("post_id").in("post_id", ids);
+          var likeCount = {}, myLikes = {}, commentCount = {};
+          (likeRes.data || []).forEach(function (l) {
+            likeCount[l.post_id] = (likeCount[l.post_id] || 0) + 1;
+            if (l.user_id === me.id) myLikes[l.post_id] = 1;
+          });
+          (commentRes.data || []).forEach(function (c) { commentCount[c.post_id] = (commentCount[c.post_id] || 0) + 1; });
+          posts.forEach(function (p) {
+            feed.appendChild(postCard(p, authors[p.author_id], likeCount[p.id] || 0, !!myLikes[p.id], commentCount[p.id] || 0));
+          });
+        }
+      }
+      done(wrap);
+    }
+
+    function postCard(p, author, likeCount, liked, commentCount) {
+      var card = el(
+        '<article class="card post">' +
+          '<div class="post-head">' + avatarHtml(author, 44) +
+            '<div style="min-width:0"><div style="font-weight:800">' + esc(displayName(author)) + "</div>" +
+            '<div class="faint small">@' + esc(author ? author.username : "") + " · " + esc(timeAgo(p.created_at)) + "</div></div>" +
+            (p.author_id === me.id ? '<button type="button" class="icon-btn" data-act="del" style="margin-left:auto">Delete</button>' : "") +
+          "</div>" +
+          (p.body ? '<p style="margin:12px 0 0;overflow-wrap:anywhere">' + esc(p.body) + "</p>" : "") +
+          (p.media_url ? '<img src="' + esc(p.media_url) + '" alt="Post photo" style="width:100%;border-radius:14px;margin-top:12px" loading="lazy" />' : "") +
+          '<div class="post-actions">' +
+            '<button type="button" class="icon-btn' + (liked ? " liked" : "") + '" data-act="like">♥ <span>' + likeCount + "</span></button>" +
+            '<button type="button" class="icon-btn" data-act="comments">Comments · ' + commentCount + "</button>" +
+            (p.author_id !== me.id ? '<button type="button" class="icon-btn" data-act="report">Report</button>' : "") +
+          "</div>" +
+          '<div class="comments-zone hidden"></div>' +
+        "</article>"
+      );
+      card.querySelector('[data-act="like"]').addEventListener("click", async function () {
+        var btn = this;
+        if (liked) {
+          var d = await sb.from("post_likes").delete().eq("post_id", p.id).eq("user_id", me.id);
+          if (d.error) { toast(errText(d.error)); return; }
+          liked = false; likeCount--; btn.classList.remove("liked");
+        } else {
+          var i = await sb.from("post_likes").insert({ post_id: p.id, user_id: me.id });
+          if (i.error) { toast(errText(i.error)); return; }
+          liked = true; likeCount++; btn.classList.add("liked");
+        }
+        btn.querySelector("span").textContent = likeCount;
+      });
+      var delBtn = card.querySelector('[data-act="del"]');
+      if (delBtn) delBtn.addEventListener("click", async function () {
+        var d = await sb.from("posts").delete().eq("id", p.id).eq("author_id", me.id);
+        if (d.error) { toast(errText(d.error)); return; }
+        card.remove(); toast("Post deleted.");
+      });
+      var repBtn = card.querySelector('[data-act="report"]');
+      if (repBtn) repBtn.addEventListener("click", function () { reportSheet("post", p.id, p.author_id); });
+      card.querySelector('[data-act="comments"]').addEventListener("click", function () {
+        var zone = card.querySelector(".comments-zone");
+        if (zone.classList.contains("hidden")) { zone.classList.remove("hidden"); loadComments(zone, p); }
+        else zone.classList.add("hidden");
+      });
+      var head = card.querySelector(".post-head");
+      head.style.cursor = "pointer";
+      head.addEventListener("click", function (e) {
+        if (e.target.closest("button")) return;
+        if (author) openProfile(author);
+      });
+      return card;
+    }
+
+    async function loadComments(zone, post) {
+      zone.innerHTML = '<div class="spinner" style="margin:16px auto"></div>';
+      var res = await sb.from("post_comments").select("*").eq("post_id", post.id).order("created_at", { ascending: true }).limit(100);
+      zone.innerHTML = "";
+      if (res.error) { zone.innerHTML = '<div class="err-box">' + esc(errText(res.error)) + "</div>"; return; }
+      var authors = await fetchProfiles((res.data || []).map(function (c) { return c.author_id; }));
+      (res.data || []).forEach(function (c) {
+        var a = authors[c.author_id];
+        zone.appendChild(el(
+          '<div class="comment"><b>' + esc(displayName(a)) + '</b> <span class="faint small">' + esc(timeAgo(c.created_at)) + "</span>" +
+          '<div style="overflow-wrap:anywhere">' + esc(c.body) + "</div></div>"
+        ));
+      });
+      var form = el(
+        '<div class="chat-input-row" style="padding-bottom:2px"><input class="input" maxlength="500" placeholder="Write a comment…" />' +
+        '<button type="button" class="send-btn" aria-label="Send comment"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button></div>'
+      );
+      var input = form.querySelector("input");
+      var send = async function () {
+        var body = input.value.trim();
+        if (!body) return;
+        var ins = await sb.from("post_comments").insert({ post_id: post.id, author_id: me.id, body: body });
+        if (ins.error) { toast(errText(ins.error)); return; }
+        loadComments(zone, post);
+      };
+      form.querySelector(".send-btn").addEventListener("click", send);
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      zone.appendChild(form);
+    }
+
+    /* ---------------- DISCOVER ---------------- */
+    async function renderDiscover(done) {
+      var wrap = el(
+        "<div><h2 class='section-title' style='margin-top:10px'>Discover people</h2>" +
+        '<div class="chat-input-row" style="padding:0 0 6px"><input class="input" id="searchBox" placeholder="Search by name or @username…" />' +
+        '<button type="button" class="btn primary" id="searchBtn" style="min-height:52px">Search</button></div>' +
+        '<div id="peopleList" class="stack"></div></div>'
+      );
+      done(wrap);
+      var list = wrap.querySelector("#peopleList");
+      async function runSearch() {
+        var q = wrap.querySelector("#searchBox").value.trim().replace(/^@/, "");
+        list.innerHTML = '<div class="spinner"></div>';
+        var req = sb.from("profiles").select("*").order("username", { ascending: true }).limit(40);
+        if (q) req = req.or("username.ilike.%" + q.replace(/[%_,()]/g, "") + "%,display_name.ilike.%" + q.replace(/[%_,()]/g, "") + "%");
+        var res = await req;
+        list.innerHTML = "";
+        if (res.error) { list.appendChild(el('<div class="err-box">' + esc(errText(res.error)) + "</div>")); return; }
+        var people = (res.data || []).filter(function (p) { return p.id !== me.id && !blockedIds[p.id]; });
+        cacheProfiles(people);
+        if (!people.length) {
+          list.appendChild(el('<div class="empty"><div class="big">Nobody found</div>' + (q ? "No one matches that search yet." : "No other members yet — invite a friend to join VibeLive.") + "</div>"));
+          return;
+        }
+        people.forEach(function (p) {
+          var row = el(
+            '<button type="button" class="person-row">' + avatarHtml(p, 52) +
+            '<span style="min-width:0;flex:1"><span style="display:flex;align-items:center;gap:8px;font-weight:800">' + esc(displayName(p)) + " " + onlineHtml(p) + "</span>" +
+            '<span class="muted small" style="display:block">@' + esc(p.username) + (p.bio ? " · " + esc(p.bio.slice(0, 60)) : "") + "</span></span>" +
+            '<span class="faint" aria-hidden="true">›</span></button>'
+          );
+          row.addEventListener("click", function () { openProfile(p); });
+          list.appendChild(row);
+        });
+      }
+      wrap.querySelector("#searchBtn").addEventListener("click", runSearch);
+      wrap.querySelector("#searchBox").addEventListener("keydown", function (e) { if (e.key === "Enter") runSearch(); });
+      runSearch();
+    }
+
+    /* ---------------- PROFILE VIEW (overlay) ---------------- */
+    function openOverlay(html) {
+      closeOverlay();
+      var ov = el('<div class="overlay"><div class="overlay-inner"></div></div>');
+      ov.querySelector(".overlay-inner").innerHTML = html;
+      $("#overlayRoot").appendChild(ov);
+      return ov;
+    }
+    function closeOverlay() { $("#overlayRoot").innerHTML = ""; }
+
+    async function openProfile(profile) {
+      if (!profile) return;
+      if (profile.id === me.id) { navigate("profile"); return; }
+      var ov = openOverlay(
+        '<div class="overlay-bar"><button type="button" class="back-btn" id="ovBack">‹ Back</button>' +
+        '<h2 style="margin:0;font-size:20px">Profile</h2></div><div class="spinner"></div>'
+      );
+      ov.querySelector("#ovBack").addEventListener("click", closeOverlay);
+      var results = await Promise.all([
+        sb.from("profiles").select("*").eq("id", profile.id).single(),
+        sb.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", profile.id),
+        sb.from("follows").select("follower_id", { count: "exact", head: true }).eq("follower_id", profile.id),
+        sb.from("follows").select("follower_id").eq("follower_id", me.id).eq("following_id", profile.id).maybeSingle()
+      ]);
+      var p = results[0].data || profile;
+      cacheProfiles([p]);
+      var followers = results[1].count || 0, following = results[2].count || 0;
+      var isFollowing = !!results[3].data;
+      var inner = ov.querySelector(".overlay-inner");
+      inner.innerHTML =
+        '<div class="overlay-bar"><button type="button" class="back-btn" id="ovBack2">‹ Back</button>' +
+        '<h2 style="margin:0;font-size:20px;overflow-wrap:anywhere">' + esc(displayName(p)) + "</h2></div>" +
+        (p.cover_url ? '<img class="cover-img" src="' + esc(p.cover_url) + '" alt="" />' : '<div class="cover-img"></div>') +
+        '<div style="display:flex;gap:14px;align-items:flex-end;margin-top:-38px;padding:0 10px;position:relative">' +
+          avatarHtml(p, 84) +
+          '<div style="padding-bottom:4px"><div style="font-weight:800;font-size:19px;display:flex;gap:8px;align-items:center">' + esc(displayName(p)) + " " + onlineHtml(p) + "</div>" +
+          '<div class="faint">@' + esc(p.username) + "</div></div></div>" +
+        (p.bio ? '<p style="margin:14px 2px 0;overflow-wrap:anywhere">' + esc(p.bio) + "</p>" : "") +
+        ((p.interests && p.interests.length) ? '<div class="row-gap mt">' + p.interests.map(function (i) { return '<span class="chip">' + esc(i) + "</span>"; }).join("") + "</div>" : "") +
+        '<div class="stat-row mt" style="margin-left:2px"><div class="stat"><b>' + followers + "</b><span>Followers</span></div>" +
+        '<div class="stat"><b>' + following + "</b><span>Following</span></div></div>" +
+        '<div class="row-gap mt">' +
+          '<button type="button" class="btn ' + (isFollowing ? "ghost" : "primary") + '" id="ovFollow" style="flex:1">' + (isFollowing ? "Following ✓ — tap to unfollow" : "Follow") + "</button>" +
+          '<button type="button" class="btn ghost" id="ovMsg" style="flex:1">Message</button></div>' +
+        profileLinksHtml(p) +
+        '<div class="row-gap mt">' +
+          '<button type="button" class="btn ghost small" id="ovBlock">' + (blockedIds[p.id] ? "Unblock" : "Block") + "</button>" +
+          '<button type="button" class="btn ghost small" id="ovReport">Report</button></div>';
+      inner.querySelector("#ovBack2").addEventListener("click", closeOverlay);
+      var followBtn = inner.querySelector("#ovFollow");
+      followBtn.addEventListener("click", async function () {
+        followBtn.disabled = true;
+        if (isFollowing) {
+          var d = await sb.from("follows").delete().eq("follower_id", me.id).eq("following_id", p.id);
+          if (d.error) { toast(errText(d.error)); followBtn.disabled = false; return; }
+          isFollowing = false;
+        } else {
+          var i = await sb.from("follows").insert({ follower_id: me.id, following_id: p.id });
+          if (i.error) { toast(errText(i.error)); followBtn.disabled = false; return; }
+          isFollowing = true;
+        }
+        followBtn.disabled = false;
+        followBtn.textContent = isFollowing ? "Following ✓ — tap to unfollow" : "Follow";
+        followBtn.className = "btn " + (isFollowing ? "ghost" : "primary");
+        var c = await sb.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id);
+        inner.querySelectorAll(".stat b")[0].textContent = c.count || 0;
+      });
+      inner.querySelector("#ovMsg").addEventListener("click", async function () {
+        this.disabled = true;
+        var convId = await findOrCreateConversation(p.id);
+        this.disabled = false;
+        if (convId) { closeOverlay(); openConversation(convId, p); }
+      });
+      inner.querySelector("#ovBlock").addEventListener("click", function () { toggleBlock(p, this); });
+      inner.querySelector("#ovReport").addEventListener("click", function () { reportSheet("user", p.id, p.id); });
+    }
+
+    function profileLinksHtml(p) {
+      var out = "";
+      var links = p.links || {};
+      var rows = [];
+      Object.keys(links).forEach(function (k) {
+        if (links[k]) rows.push('<div class="tx-row"><span class="muted" style="text-transform:capitalize">' + esc(k) + '</span><a href="' + esc(links[k]) + '" target="_blank" rel="noopener noreferrer" style="overflow-wrap:anywhere">' + esc(links[k]) + "</a></div>");
+      });
+      if (p.throne_link) rows.push('<div class="tx-row"><span class="muted">Throne wishlist</span><a href="' + esc(p.throne_link) + '" target="_blank" rel="noopener noreferrer">Open Throne</a></div>');
+      if (rows.length) out = '<div class="card mt" style="padding:6px 16px">' + rows.join("") + "</div>";
+      return out;
+    }
+
+    /* ---------------- MESSAGES ---------------- */
+    async function myConversationIds() {
+      var res = await sb.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", me.id);
+      if (res.error) return { map: {}, ids: [] };
+      var map = {}, ids = [];
+      (res.data || []).forEach(function (m) { map[m.conversation_id] = m.last_read_at; ids.push(m.conversation_id); });
+      return { map: map, ids: ids };
+    }
+
+    async function renderMessages(done) {
+      var wrap = el('<div><h2 class="section-title" style="margin-top:10px">Messages</h2><div id="convList" class="stack"></div></div>');
+      done(wrap);
+      var list = wrap.querySelector("#convList");
+      var mine = await myConversationIds();
+      if (!mine.ids.length) {
+        list.innerHTML = "";
+        list.appendChild(el('<div class="empty"><div class="big">No conversations yet</div>Find someone in <b>Discover</b> and tap Message to start one.</div>'));
+        updateMsgBadge(0);
+        return;
+      }
+      var membersRes = await sb.from("conversation_members").select("conversation_id, user_id").in("conversation_id", mine.ids);
+      var othersByConv = {};
+      (membersRes.data || []).forEach(function (m) {
+        if (m.user_id !== me.id) {
+          if (blockedIds[m.user_id]) return;
+          (othersByConv[m.conversation_id] = othersByConv[m.conversation_id] || []).push(m.user_id);
+        }
+      });
+      var allOthers = [];
+      Object.keys(othersByConv).forEach(function (k) { allOthers = allOthers.concat(othersByConv[k]); });
+      var profs = await fetchProfiles(allOthers);
+      var convRes = await sb.from("conversations").select("id, last_message_at, created_at").in("id", mine.ids);
+      var convs = (convRes.data || []).slice().sort(function (a, b) {
+        return new Date(b.last_message_at || b.created_at) - new Date(a.last_message_at || a.created_at);
+      });
+      list.innerHTML = "";
+      var totalUnread = 0;
+      for (var ci = 0; ci < convs.length; ci++) {
+        var conv = convs[ci];
+        var others = othersByConv[conv.id] || [];
+        if (!others.length) continue;
+        var other = profs[others[0]];
+        var lastRes = await sb.from("messages").select("body, created_at, sender_id").eq("conversation_id", conv.id).order("created_at", { ascending: false }).limit(1);
+        var last = lastRes.data && lastRes.data[0];
+        var lastRead = mine.map[conv.id];
+        var unreadQ = sb.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", conv.id).neq("sender_id", me.id);
+        if (lastRead) unreadQ = unreadQ.gt("created_at", lastRead);
+        var unreadRes = await unreadQ;
+        var unread = unreadRes.count || 0;
+        totalUnread += unread;
+        var row = el(
+          '<button type="button" class="conv-row">' + avatarHtml(other, 52) +
+          '<span style="min-width:0;flex:1"><span style="display:flex;align-items:center;gap:8px;font-weight:800">' + esc(displayName(other)) + " " + onlineHtml(other) + "</span>" +
+          '<span class="muted small" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+          (last ? (last.sender_id === me.id ? "You: " : "") + esc(last.body) : "Say hello 👋".replace(" 👋", "")) + "</span></span>" +
+          '<span style="text-align:right;flex:none"><span class="faint small" style="display:block">' + esc(last ? timeAgo(last.created_at) : "") + "</span>" +
+          (unread ? '<span class="unread-badge" style="margin-top:5px;margin-left:auto">' + unread + "</span>" : "") + "</span></button>"
+        );
+        (function (c, o) {
+          row.addEventListener("click", function () { openConversation(c.id, o); });
+        })(conv, other);
+        list.appendChild(row);
+      }
+      if (!list.children.length) {
+        list.appendChild(el('<div class="empty"><div class="big">No conversations yet</div>Find someone in <b>Discover</b> and tap Message to start one.</div>'));
+      }
+      updateMsgBadge(totalUnread);
+    }
+
+    function updateMsgBadge(n) {
+      unreadTotal = n;
+      var b = $("#msgBadge");
+      b.textContent = n;
+      b.classList.toggle("hidden", !n);
+    }
+    async function refreshUnread() {
+      if (!me) return;
+      var mine = await myConversationIds();
+      var total = 0;
+      for (var i = 0; i < mine.ids.length; i++) {
+        var q = sb.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", mine.ids[i]).neq("sender_id", me.id);
+        if (mine.map[mine.ids[i]]) q = q.gt("created_at", mine.map[mine.ids[i]]);
+        var r = await q;
+        total += r.count || 0;
+      }
+      updateMsgBadge(total);
+    }
+
+    function startListRealtime() {
+      stopListRealtime();
+      listChannel = sb.channel("conv-list-" + me.id)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, function () {
+          refreshUnread();
+          if (currentView === "messages" && !$("#overlayRoot").children.length) navigate("messages");
+        })
+        .subscribe();
+    }
+    function stopListRealtime() {
+      if (listChannel) { sb.removeChannel(listChannel); listChannel = null; }
+    }
+
+    async function findOrCreateConversation(otherId) {
+      var mine = await myConversationIds();
+      if (mine.ids.length) {
+        var others = await sb.from("conversation_members").select("conversation_id").eq("user_id", otherId).in("conversation_id", mine.ids);
+        if (!others.error && others.data && others.data.length) return others.data[0].conversation_id;
+      }
+      var conv = await sb.from("conversations").insert({}).select("id").single();
+      if (conv.error) { toast("Couldn't start the conversation: " + errText(conv.error)); return null; }
+      var mem = await sb.from("conversation_members").insert([
+        { conversation_id: conv.data.id, user_id: me.id },
+        { conversation_id: conv.data.id, user_id: otherId }
+      ]);
+      if (mem.error) { toast("Couldn't start the conversation: " + errText(mem.error)); return null; }
+      return conv.data.id;
+    }
+
+    var chatChannel = null;
+    async function openConversation(conversationId, otherProfile) {
+      var ov = openOverlay('<div class="chat-wrap"></div>');
+      var wrap = ov.querySelector(".chat-wrap");
+      var profs = await fetchProfiles([otherProfile ? otherProfile.id : null].filter(Boolean));
+      var other = otherProfile || null;
+      if (!other) {
+        var memRes = await sb.from("conversation_members").select("user_id").eq("conversation_id", conversationId).neq("user_id", me.id);
+        if (memRes.data && memRes.data.length) {
+          var p2 = await fetchProfiles([memRes.data[0].user_id]);
+          other = p2[memRes.data[0].user_id];
+        }
+      }
+      wrap.innerHTML =
+        '<div class="overlay-bar">' +
+          '<button type="button" class="back-btn" id="chatBack">‹ Back</button>' +
+          '<button type="button" id="chatWho" style="display:flex;gap:10px;align-items:center;background:none;border:0;color:var(--text);text-align:left;padding:0">' +
+            avatarHtml(other, 42) +
+            '<span><span style="display:block;font-weight:800;line-height:1.2">' + esc(displayName(other)) + '</span>' +
+            '<span class="faint small">@' + esc(other ? other.username : "") + "</span></span></button>" +
+          '<span style="margin-left:auto" id="chatLive">' + onlineHtml(other || {}) + "</span>" +
+        "</div>" +
+        '<div class="chat-scroll" id="chatScroll"><div class="spinner"></div></div>' +
+        '<div class="chat-input-row"><input class="input" id="chatInput" maxlength="2000" placeholder="Message…" />' +
+        '<button type="button" class="send-btn" id="chatSend" aria-label="Send message"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button></div>';
+      var scroll = wrap.querySelector("#chatScroll");
+      var seenMsg = {};
+      function addBubble(m) {
+        if (seenMsg[m.id]) return;
+        seenMsg[m.id] = 1;
+        var mine = m.sender_id === me.id;
+        var b = el('<div class="bubble ' + (mine ? "mine" : "theirs") + '">' + esc(m.body) +
+          '<div style="font-size:11px;opacity:.75;margin-top:3px;text-align:' + (mine ? "right" : "left") + '">' + esc(timeAgo(m.created_at)) + "</div></div>");
+        scroll.appendChild(b);
+        scroll.scrollTop = scroll.scrollHeight;
+      }
+      async function markRead() {
+        await sb.from("conversation_members").update({ last_read_at: new Date().toISOString() })
+          .eq("conversation_id", conversationId).eq("user_id", me.id);
+        refreshUnread();
+      }
+      var res = await sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(300);
+      scroll.innerHTML = "";
+      if (res.error) {
+        scroll.innerHTML = '<div class="err-box">' + esc(errText(res.error)) + "</div>";
+      } else if (!res.data.length) {
+        scroll.innerHTML = '<div class="empty" style="margin-top:16px"><div class="big">No messages yet</div>Say hello to ' + esc(displayName(other)) + ".</div>";
+      } else {
+        res.data.forEach(addBubble);
+      }
+      markRead();
+      if (chatChannel) sb.removeChannel(chatChannel);
+      chatChannel = sb.channel("chat-" + conversationId)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + conversationId }, function (payload) {
+          var empty = scroll.querySelector(".empty");
+          if (empty) empty.remove();
+          addBubble(payload.new);
+          if (payload.new.sender_id !== me.id) markRead();
+        })
+        .subscribe();
+      async function send() {
+        var input = wrap.querySelector("#chatInput");
+        var body = input.value.trim();
+        if (!body) return;
+        input.value = "";
+        var ins = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: me.id, body: body.slice(0, 2000) });
+        if (ins.error) { toast("Message failed: " + errText(ins.error)); input.value = body; return; }
+        await sb.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
+        markRead();
+        // If realtime is slow, the insert response path re-fetches the newest row.
+        var chk = await sb.from("messages").select("*").eq("conversation_id", conversationId).eq("sender_id", me.id).order("created_at", { ascending: false }).limit(1);
+        if (chk.data && chk.data[0]) addBubble(chk.data[0]);
+      }
+      wrap.querySelector("#chatSend").addEventListener("click", send);
+      wrap.querySelector("#chatInput").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      wrap.querySelector("#chatWho").addEventListener("click", function () { if (other) { cleanupChat(); openProfile(other); } });
+      wrap.querySelector("#chatBack").addEventListener("click", function () {
+        cleanupChat();
+        closeOverlay();
+        if (currentView === "messages") navigate("messages");
+      });
+      function cleanupChat() {
+        if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
+      }
+    }
+
+    /* ---------------- WALLET ---------------- */
+    async function openWallet() {
+      var ov = openOverlay(
+        '<div class="overlay-bar"><button type="button" class="back-btn" id="wBack">‹ Back</button>' +
+        '<h2 style="margin:0;font-size:20px">Wallet</h2></div><div class="spinner"></div>'
+      );
+      ov.querySelector("#wBack").addEventListener("click", closeOverlay);
+      var results = await Promise.all([
+        sb.from("wallets").select("balance").eq("user_id", me.id).maybeSingle(),
+        sb.from("coin_transactions").select("*").eq("user_id", me.id).order("created_at", { ascending: false }).limit(50),
+        sb.from("gift_transactions").select("*").eq("sender_id", me.id).order("created_at", { ascending: false }).limit(50),
+        sb.from("gift_transactions").select("*").eq("recipient_id", me.id).order("created_at", { ascending: false }).limit(50),
+        sb.from("gift_catalog").select("id, name")
+      ]);
+      var balance = results[0].data ? Number(results[0].data.balance) : 0;
+      var giftNames = {};
+      (results[4].data || []).forEach(function (g) { giftNames[g.id] = g.name; });
+      var peopleIds = [];
+      (results[2].data || []).forEach(function (t) { peopleIds.push(t.recipient_id); });
+      (results[3].data || []).forEach(function (t) { peopleIds.push(t.sender_id); });
+      var profs = await fetchProfiles(peopleIds);
+      var inner = ov.querySelector(".overlay-inner");
+      var txHtml = "";
+      (results[1].data || []).forEach(function (t) {
+        var amt = Number(t.amount);
+        txHtml += '<div class="tx-row"><span><span style="font-weight:700">' + esc(t.note || t.kind || "Coins") + '</span><br><span class="faint small">' + esc(timeAgo(t.created_at)) + ' ago</span></span>' +
+          '<span class="tx-amt ' + (amt >= 0 ? "pos" : "neg") + '">' + (amt >= 0 ? "+" : "") + amt.toLocaleString() + "</span></div>";
+      });
+      var giftHtml = "";
+      var giftRows = [];
+      (results[2].data || []).forEach(function (t) { giftRows.push({ t: t, dir: "sent" }); });
+      (results[3].data || []).forEach(function (t) { giftRows.push({ t: t, dir: "got" }); });
+      giftRows.sort(function (a, b) { return new Date(b.t.created_at) - new Date(a.t.created_at); });
+      giftRows.slice(0, 50).forEach(function (r) {
+        var otherId = r.dir === "sent" ? r.t.recipient_id : r.t.sender_id;
+        var other = profs[otherId];
+        giftHtml += '<div class="tx-row"><span><span style="font-weight:700">' + esc(giftNames[r.t.gift_id] || "Gift") + "</span> " +
+          '<span class="muted small">' + (r.dir === "sent" ? "to " : "from ") + esc(displayName(other)) + '</span><br><span class="faint small">' + esc(timeAgo(r.t.created_at)) + ' ago</span></span>' +
+          '<span class="tx-amt ' + (r.dir === "sent" ? "neg" : "pos") + '">' + (r.dir === "sent" ? "−" : "+") + Number(r.t.coins || 0).toLocaleString() + "</span></div>";
+      });
+      inner.innerHTML =
+        '<div class="overlay-bar"><button type="button" class="back-btn" id="wBack2">‹ Back</button>' +
+        '<h2 style="margin:0;font-size:20px">Wallet</h2></div>' +
+        '<div class="card balance-hero brand-grad" style="border:0"><div class="small" style="font-weight:800;opacity:.9">YOUR COIN BALANCE</div>' +
+        '<div class="amt"><span class="coin-ic"></span>' + balance.toLocaleString() + "</div>" +
+        '<div class="small" style="opacity:.92">This is your real balance, stored safely on the server.</div></div>' +
+        '<div class="ok-box mt">Coin purchases arrive with the Android release. Until then, your balance only changes when gifts are sent or received.</div>' +
+        '<h3 class="section-title">Coin history</h3>' +
+        (txHtml ? '<div class="card" style="padding:4px 16px">' + txHtml + "</div>" : '<div class="empty"><div class="big">No coin activity yet</div>Your balance starts at 0 — nothing here is made up.</div>') +
+        '<h3 class="section-title">Gifts sent &amp; received</h3>' +
+        (giftHtml ? '<div class="card" style="padding:4px 16px">' + giftHtml + "</div>" : '<div class="empty"><div class="big">No gifts yet</div>Gifts you send during live streams will show up here.</div>');
+      inner.querySelector("#wBack2").addEventListener("click", closeOverlay);
+      $("#topBalance").textContent = balance.toLocaleString();
+    }
+
+    /* ---------------- GO LIVE (setup + preview) ---------------- */
+    var FILTERS = [
+      { name: "Natural", css: "" },
+      { name: "Glow", css: "brightness(1.12) saturate(1.15)" },
+      { name: "Golden Hour", css: "sepia(0.35) saturate(1.4) hue-rotate(-12deg) brightness(1.05)" },
+      { name: "Rose", css: "hue-rotate(-14deg) saturate(1.3) brightness(1.06)" },
+      { name: "Neon Pop", css: "saturate(1.9) contrast(1.15)" },
+      { name: "Vintage", css: "sepia(0.55) contrast(0.95) brightness(1.02)" },
+      { name: "Noir", css: "grayscale(1) contrast(1.2)" },
+      { name: "Cool Ice", css: "saturate(1.1) brightness(1.06) contrast(1.03) hue-rotate(12deg)" },
+      { name: "Dreamy Soft", css: "brightness(1.1) saturate(1.2) contrast(0.92)" }
+    ];
+    var CATEGORIES = ["Chat", "Music", "Gaming", "Art", "Cooking", "Fitness", "Study", "Just Vibes"];
+    var previewStream = null;
+    var previewState = { filter: 0, glow: 30, smooth: 30, facing: "user" };
+
+    function previewFilterCss() {
+      var f = FILTERS[previewState.filter] || FILTERS[0];
+      var parts = [f.css, "brightness(" + (1 + previewState.glow / 250) + ")", "saturate(" + (1 + previewState.smooth / 320) + ")"];
+      if (previewState.smooth > 72) parts.push("blur(" + ((previewState.smooth - 72) / 40).toFixed(2) + "px)");
+      return parts.filter(Boolean).join(" ");
+    }
+    async function startPreview() {
+      var vid = $("#previewVideo");
+      if (!vid) return;
+      stopPreview();
+      try {
+        previewStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: previewState.facing }, audio: false
+        });
+        vid.srcObject = previewStream;
+        vid.style.filter = previewFilterCss();
+        var msg = $("#previewMsg"); if (msg) msg.classList.add("hidden");
+      } catch (e) {
+        var m = $("#previewMsg");
+        if (m) { m.classList.remove("hidden"); m.textContent = "Camera is off or blocked. Allow camera access in your browser, then tap Try again."; }
+      }
+    }
+    function stopPreview() {
+      if (previewStream) { previewStream.getTracks().forEach(function (t) { t.stop(); }); previewStream = null; }
+    }
+
+    async function renderGoLive(done) {
+      var wrap = el(
+        "<div><h2 class='section-title' style='margin-top:10px'>Go Live</h2>" +
+        '<p class="muted" style="margin-top:-6px">Set up your stream, check your camera, then start.</p>' +
+        '<div class="preview-box"><video id="previewVideo" playsinline muted autoplay></video>' +
+        '<span class="preview-tag">Preview — only you can see this</span>' +
+        '<div id="previewMsg" class="hidden" style="position:absolute;inset:auto 12px 12px 12px;background:rgba(0,0,0,.78);border-radius:14px;padding:12px 14px;font-size:15px">Starting your camera…</div></div>' +
+        '<h3 style="margin:20px 0 4px;font-size:17px">Preview filters</h3>' +
+        '<p class="small faint" style="margin:0 0 8px">Filters dress up your preview on this device only.</p>' +
+        '<div class="filter-row" id="filterRow">' +
+          FILTERS.map(function (f, i) { return '<button type="button" class="filter-chip' + (i === previewState.filter ? " on" : "") + '" data-f="' + i + '">' + esc(f.name) + "</button>"; }).join("") +
+        "</div>" +
+        '<div class="field"><label for="glowRange">Glow · <span id="glowVal">' + previewState.glow + '</span></label>' +
+        '<input type="range" id="glowRange" min="0" max="100" value="' + previewState.glow + '" /></div>' +
+        '<div class="field"><label for="smoothRange">Smooth · <span id="smoothVal">' + previewState.smooth + '</span></label>' +
+        '<input type="range" id="smoothRange" min="0" max="100" value="' + previewState.smooth + '" /></div>' +
+        '<button type="button" class="btn ghost small" id="flipCam">Switch camera (front / back)</button>' +
+        '<h3 style="margin:24px 0 10px;font-size:17px">Stream details</h3>' +
+        '<div class="field"><label for="streamTitle">Stream title</label>' +
+        '<input class="input" id="streamTitle" maxlength="120" placeholder="e.g. Cozy evening chat — come say hi" /></div>' +
+        '<div class="field"><label for="streamDesc">Description (optional)</label>' +
+        '<textarea class="textarea" id="streamDesc" maxlength="300" placeholder="What is this stream about?"></textarea></div>' +
+        '<div class="field"><label>Category</label><div class="cat-row" id="catRow">' +
+          CATEGORIES.map(function (c, i) { return '<button type="button" class="filter-chip' + (i === 0 ? " on" : "") + '" data-c="' + esc(c) + '">' + esc(c) + "</button>"; }).join("") +
+        "</div></div>" +
+        '<div id="liveErr"></div>' +
+        '<button type="button" class="btn primary block" id="goLiveBtn" style="min-height:60px;font-size:18px;margin-top:8px">Start my stream</button>' +
+        '<p class="small faint" style="text-align:center;margin-top:10px">People can watch, chat and send gifts while you\'re live.</p></div>'
+      );
+      done(wrap);
+      var category = CATEGORIES[0];
+      wrap.querySelectorAll("#filterRow .filter-chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          previewState.filter = Number(chip.dataset.f);
+          wrap.querySelectorAll("#filterRow .filter-chip").forEach(function (c) { c.classList.remove("on"); });
+          chip.classList.add("on");
+          var vid = $("#previewVideo"); if (vid) vid.style.filter = previewFilterCss();
+        });
+      });
+      wrap.querySelector("#glowRange").addEventListener("input", function () {
+        previewState.glow = Number(this.value);
+        wrap.querySelector("#glowVal").textContent = this.value;
+        var vid = $("#previewVideo"); if (vid) vid.style.filter = previewFilterCss();
+      });
+      wrap.querySelector("#smoothRange").addEventListener("input", function () {
+        previewState.smooth = Number(this.value);
+        wrap.querySelector("#smoothVal").textContent = this.value;
+        var vid = $("#previewVideo"); if (vid) vid.style.filter = previewFilterCss();
+      });
+      wrap.querySelector("#flipCam").addEventListener("click", function () {
+        previewState.facing = previewState.facing === "user" ? "environment" : "user";
+        startPreview();
+      });
+      wrap.querySelectorAll("#catRow .filter-chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          category = chip.dataset.c;
+          wrap.querySelectorAll("#catRow .filter-chip").forEach(function (c) { c.classList.remove("on"); });
+          chip.classList.add("on");
+        });
+      });
+      wrap.querySelector("#goLiveBtn").addEventListener("click", async function () {
+        var btn = this;
+        var title = wrap.querySelector("#streamTitle").value.trim();
+        var errBox = wrap.querySelector("#liveErr");
+        errBox.innerHTML = "";
+        if (!title) { errBox.innerHTML = '<div class="err-box">Give your stream a title first.</div>'; return; }
+        btn.disabled = true; btn.textContent = "Creating your stream…";
+        var room = "vl-" + newUuid();
+        var res = await sb.from("streams").insert({
+          host_id: me.id, title: title.slice(0, 120),
+          description: wrap.querySelector("#streamDesc").value.trim() || null,
+          category: category, livekit_room: room, status: "live"
+        }).select("*").single();
+        if (res.error || !res.data) {
+          errBox.innerHTML = '<div class="err-box">Your stream couldn\'t be created: ' + esc(errText(res.error)) + "</div>";
+          btn.disabled = false; btn.textContent = "Start my stream";
+          return;
+        }
+        stopPreview();
+        openStreamRoom(res.data, "host");
+      });
+    }
+
+    /* ---------------- GIFT ARTWORK (SVG, per gift) ---------------- */
+    function giftArt(g, size) {
+      var key = ((g && (g.artwork || g.name)) || "gift").toLowerCase();
+      var body;
+      if (key.indexOf("rose") >= 0) {
+        body = '<path d="M50 16c9 7 12 15 9 23-2 7-9 11-16 10-8-1-14-7-14-15 0-9 8-17 21-18Z" fill="#ff2e63"/><path d="M44 49c1 12-2 22-8 31" stroke="#2fd67c" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M38 66c-8-2-13-8-14-15 8 1 14 5 16 12" fill="#2fd67c"/><circle cx="44" cy="31" r="6" fill="#ff7a9c"/>';
+      } else if (key.indexOf("heart") >= 0 || key.indexOf("love") >= 0) {
+        body = '<path d="M50 84S14 60 14 36c0-11 8-19 18-19 8 0 14 4 18 11 4-7 10-11 18-11 10 0 18 8 18 19 0 24-36 48-36 48Z" fill="#ff2e63"/><path d="M30 30c-4 2-6 6-6 10" stroke="#ff9db4" stroke-width="6" fill="none" stroke-linecap="round"/>';
+      } else if (key.indexOf("crown") >= 0) {
+        body = '<path d="M14 68 20 32l16 15L50 24l14 23 16-15 6 36Z" fill="#ffc93c"/><rect x="14" y="68" width="72" height="10" rx="4" fill="#ff7a18"/><circle cx="50" cy="55" r="6" fill="#ff2e63"/><circle cx="28" cy="60" r="4" fill="#39c2ff"/><circle cx="72" cy="60" r="4" fill="#39c2ff"/>';
+      } else if (key.indexOf("diamond") >= 0 || key.indexOf("gem") >= 0) {
+        body = '<path d="M28 22h44l14 20-36 40L14 42Z" fill="#39c2ff"/><path d="M14 42h72M50 82 36 42l8-20M50 82 64 42l-8-20" stroke="#bfeaff" stroke-width="4" fill="none"/>';
+      } else if (key.indexOf("rocket") >= 0) {
+        body = '<path d="M50 6c12 10 18 24 18 40l-18 16L32 46c0-16 6-30 18-40Z" fill="#e8e6f2"/><circle cx="50" cy="32" r="8" fill="#39c2ff"/><path d="M32 52c-8 4-12 12-13 20l13-6M68 52c8 4 12 12 13 20l-13-6" fill="#ff7a18"/><path d="M44 68c1 8 5 14 6 22 1-8 5-14 6-22" fill="#ff2e63"/>';
+      } else if (key.indexOf("star") >= 0) {
+        body = '<path d="M50 8l11 26 28 3-21 19 6 28-24-15-24 15 6-28L11 37l28-3Z" fill="#ffc93c"/><path d="M50 22l6 15 16 2-12 11 4 16-14-9" fill="#ffe08a"/>';
+      } else if (key.indexOf("music") >= 0 || key.indexOf("note") >= 0 || key.indexOf("song") >= 0) {
+        body = '<path d="M62 14v44" stroke="#b388ff" stroke-width="7" stroke-linecap="round"/><path d="M62 14c8 1 14 5 16 12-5-4-10-6-16-6" fill="#b388ff"/><ellipse cx="48" cy="62" rx="13" ry="10" fill="#ff2e63" transform="rotate(-18 48 62)"/><ellipse cx="86" cy="56" rx="0" ry="0" fill="none"/>';
+      } else if (key.indexOf("fire") >= 0 || key.indexOf("flame") >= 0) {
+        body = '<path d="M50 6c4 16-14 24-14 40a14 14 0 0 0 28 0c0-6-3-10-6-14 10 5 16 14 16 25a24 24 0 0 1-48 0c0-20 18-30 24-51Z" fill="#ff7a18"/><path d="M50 48c5 6 8 10 8 16a8 8 0 0 1-16 0c0-6 3-10 8-16Z" fill="#ffc93c"/>';
+      } else if (key.indexOf("teddy") >= 0 || key.indexOf("bear") >= 0) {
+        body = '<circle cx="30" cy="26" r="10" fill="#b07a4f"/><circle cx="70" cy="26" r="10" fill="#b07a4f"/><circle cx="50" cy="38" r="22" fill="#c98d5f"/><ellipse cx="50" cy="46" rx="10" ry="8" fill="#ecd3ae"/><circle cx="42" cy="34" r="3.4" fill="#2b1a10"/><circle cx="58" cy="34" r="3.4" fill="#2b1a10"/><path d="M50 68c-14 0-22 8-22 16h44c0-8-8-16-22-16Z" fill="#c98d5f"/><path d="M50 78s-8-6-8-11a4.6 4.6 0 0 1 8-3 4.6 4.6 0 0 1 8 3c0 5-8 11-8 11Z" fill="#ff2e63"/>';
+      } else {
+        body = '<rect x="18" y="40" width="64" height="44" rx="6" fill="#ff2e63"/><rect x="14" y="26" width="72" height="16" rx="6" fill="#ff7a18"/><rect x="45" y="26" width="10" height="58" fill="#ffc93c"/><path d="M50 26c-10 0-16-5-16-11 0-5 4-8 9-8 6 0 7 6 7 12Zm0 0c10 0 16-5 16-11 0-5-4-8-9-8-6 0-7 6-7 12Z" fill="#ffc93c"/>';
+      }
+      return '<svg viewBox="0 0 100 100" width="' + (size || 46) + '" height="' + (size || 46) + '" aria-hidden="true">' + body + "</svg>";
+    }
+    function showGiftFx(gift, fromName) {
+      var fx = $("#giftFx");
+      fx.innerHTML = '<div class="fx-inner">' + giftArt(gift, 150) +
+        '<div class="fx-name">' + esc(gift.name) + '</div>' +
+        (fromName ? '<div style="font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.8)">from ' + esc(fromName) + "</div>" : "") + "</div>";
+      fx.classList.add("show");
+      setTimeout(function () { fx.classList.remove("show"); fx.innerHTML = ""; }, 2700);
+    }
+
+    /* ---------------- STREAM ROOM ---------------- */
+    var roomState = null;
+
+    async function getLiveKitToken(streamId, mode) {
+      var sess = await sb.auth.getSession();
+      var access = sess && sess.data && sess.data.session ? sess.data.session.access_token : null;
+      if (!access) throw new Error("signed-out");
+      var res = await fetch(SUPABASE_URL + "/functions/v1/livekit-token", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + access,
+          "apikey": SUPABASE_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ stream_id: streamId, mode: mode })
+      });
+      if (!res.ok) throw new Error("token-" + res.status);
+      var json = await res.json();
+      if (!json.token) throw new Error("no-token");
+      return json;
+    }
+
+    function closeStreamRoom() {
+      if (roomState) {
+        roomState.dead = true;
+        if (roomState.chatChannel) { try { sb.removeChannel(roomState.chatChannel); } catch (e) {} }
+        teardownRoom();
+      }
+      roomState = null;
+      document.removeEventListener("visibilitychange", roomVisibility);
+      closeOverlay();
+    }
+    function teardownRoom() {
+      if (!roomState || !roomState.room) return;
+      var r = roomState.room;
+      try {
+        r.localParticipant.trackPublications.forEach(function (pub) { if (pub.track) { try { pub.track.stop(); } catch (e) {} } });
+      } catch (e) {}
+      try { r.disconnect(); } catch (e) {}
+      roomState.room = null;
+    }
+    function roomVisibility() {
+      if (document.hidden && roomState && !roomState.hidden) quickExitRoom();
+    }
+
+    function quickExitRoom() {
+      if (!roomState) return;
+      teardownRoom();
+      roomState.hidden = true;
+      var banner = $("#roomHidden");
+      if (banner) banner.classList.remove("hidden");
+      var stateEl = $("#connState");
+      if (stateEl) { stateEl.textContent = "You're hidden — camera and mic are off"; stateEl.className = "conn-pill warn"; }
+      toast("Quick Exit: you're hidden. Nobody can see or hear you.");
+    }
+
+    async function openStreamRoom(stream, mode) {
+      var isHost = mode === "host";
+      closeStreamRoomSilent();
+      var ov = openOverlay('<div id="roomRoot"></div>');
+      ov.id = "roomOverlay";
+      var root = ov.querySelector("#roomRoot");
+      roomState = {
+        stream: stream, isHost: isHost, room: null, hidden: false, dead: false,
+        partIds: [], profiles: {}, gifts: [], balance: null, chatChannel: null,
+        micOn: true, camOn: true, facing: "user"
+      };
+      document.addEventListener("visibilitychange", roomVisibility);
+
+      var hostProf = await fetchProfiles([stream.host_id]);
+      var host = hostProf[stream.host_id];
+      roomState.profiles[stream.host_id] = host;
+
+      root.innerHTML =
+        '<div class="overlay-bar">' +
+          '<button type="button" class="back-btn" id="roomBack">‹ Leave</button>' +
+          '<span class="live-pill">LIVE</span>' +
+          '<span class="conn-pill warn" id="connState">Connecting…</span>' +
+          '<span class="conn-pill" id="viewerCount" style="margin-left:auto">1 watching</span>' +
+        "</div>" +
+        '<h2 style="margin:2px 0 4px;font-size:21px;overflow-wrap:anywhere">' + esc(stream.title) + "</h2>" +
+        '<div class="muted small" style="display:flex;gap:9px;align-items:center">' + avatarHtml(host, 28) +
+          "<span>" + esc(displayName(host)) + " · @" + esc(host ? host.username : "") + (stream.category ? " · " + esc(stream.category) : "") + "</span></div>" +
+        (stream.description ? '<p class="muted" style="margin:8px 0 0;overflow-wrap:anywhere">' + esc(stream.description) + "</p>" : "") +
+        '<div id="roomHidden" class="ok-box hidden" style="margin-top:14px"><b>You\'re hidden.</b> Your camera and microphone are fully off and you\'ve left the stream. ' +
+          '<button type="button" class="btn primary small" id="rejoinBtn" style="margin-left:8px">Rejoin stream</button></div>' +
+        '<div class="room-stage mt"><div class="tile-grid" id="tileGrid" style="padding:8px"></div></div>' +
+        '<div class="room-controls">' +
+          (isHost ?
+            '<button type="button" class="ctl-btn" id="micBtn">Mic: On</button>' +
+            '<button type="button" class="ctl-btn" id="camBtn">Camera: On</button>' +
+            '<button type="button" class="ctl-btn" id="flipBtn">Flip camera</button>' +
+            '<button type="button" class="ctl-btn" id="endBtn" style="background:#3a1220;color:#ff8fa5;border-color:#5c1a2e">End stream</button>'
+          : "") +
+          '<button type="button" class="ctl-btn quick-exit" id="quickExitBtn">⚠ Quick Exit — hide me now</button>' +
+        "</div>" +
+        '<div class="row-gap mt">' +
+          '<button type="button" class="btn primary" id="giftBtn" style="flex:1">Send a gift</button>' +
+          '<button type="button" class="btn ghost" id="partsBtn" style="flex:1">Who\'s watching (<span id="partsCount">1</span>)</button>' +
+        "</div>" +
+        '<h3 class="section-title" style="font-size:18px">Stream chat</h3>' +
+        '<div class="stream-chat" id="streamChat"><p class="faint">Loading chat…</p></div>' +
+        '<div class="chat-input-row"><input class="input" id="streamChatInput" maxlength="500" placeholder="Say something nice…" />' +
+        '<button type="button" class="send-btn" id="streamChatSend" aria-label="Send chat message"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button></div>';
+
+      root.querySelector("#roomBack").addEventListener("click", function () {
+        if (roomState && roomState.isHost) { endStream(true); }
+        else closeStreamRoom();
+      });
+      root.querySelector("#quickExitBtn").addEventListener("click", quickExitRoom);
+      root.querySelector("#rejoinBtn").addEventListener("click", function () {
+        var b = $("#roomHidden"); if (b) b.classList.add("hidden");
+        roomState.hidden = false;
+        connectRoom();
+      });
+      root.querySelector("#giftBtn").addEventListener("click", openGiftSheet);
+      root.querySelector("#partsBtn").addEventListener("click", openParticipantsSheet);
+      if (isHost) {
+        root.querySelector("#micBtn").addEventListener("click", async function () {
+          if (!roomState.room) return;
+          roomState.micOn = !roomState.micOn;
+          await roomState.room.localParticipant.setMicrophoneEnabled(roomState.micOn).catch(function () {});
+          this.textContent = "Mic: " + (roomState.micOn ? "On" : "Off");
+          this.classList.toggle("off", !roomState.micOn);
+        });
+        root.querySelector("#camBtn").addEventListener("click", async function () {
+          if (!roomState.room) return;
+          roomState.camOn = !roomState.camOn;
+          await roomState.room.localParticipant.setCameraEnabled(roomState.camOn).catch(function () {});
+          this.textContent = "Camera: " + (roomState.camOn ? "On" : "Off");
+          this.classList.toggle("off", !roomState.camOn);
+          renderTiles();
+        });
+        root.querySelector("#flipBtn").addEventListener("click", async function () {
+          if (!roomState.room) return;
+          roomState.facing = roomState.facing === "user" ? "environment" : "user";
+          await roomState.room.localParticipant.setCameraEnabled(true, { facingMode: roomState.facing }).catch(function () {});
+          renderTiles();
+        });
+        root.querySelector("#endBtn").addEventListener("click", function () { endStream(false); });
+      }
+
+      /* chat wiring */
+      var chatBox = root.querySelector("#streamChat");
+      var seenChat = {};
+      function addChatLine(m) {
+        if (seenChat[m.id]) return;
+        seenChat[m.id] = 1;
+        var p = roomState.profiles[m.sender_id];
+        var line = el("<p><b>" + esc(displayName(p)) + ":</b> " + esc(m.body) + "</p>");
+        chatBox.appendChild(line);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+      roomState.addChatLine = addChatLine;
+      var chatRes = await sb.from("stream_messages").select("*").eq("stream_id", stream.id).order("created_at", { ascending: true }).limit(200);
+      chatBox.innerHTML = "";
+      if (chatRes.error) {
+        chatBox.innerHTML = '<p class="faint">Chat couldn\'t load: ' + esc(errText(chatRes.error)) + "</p>";
+      } else {
+        var chatters = await fetchProfiles((chatRes.data || []).map(function (m) { return m.sender_id; }));
+        Object.keys(chatters).forEach(function (k) { roomState.profiles[k] = chatters[k]; });
+        if (!chatRes.data.length) chatBox.innerHTML = '<p class="faint">No chat messages yet — say the first hello.</p>';
+        chatRes.data.forEach(addChatLine);
+      }
+      roomState.chatChannel = sb.channel("stream-chat-" + stream.id)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "stream_messages", filter: "stream_id=eq." + stream.id }, async function (payload) {
+          if (!roomState.profiles[payload.new.sender_id]) {
+            var got = await fetchProfiles([payload.new.sender_id]);
+            if (got[payload.new.sender_id]) roomState.profiles[payload.new.sender_id] = got[payload.new.sender_id];
+          }
+          var f = chatBox.querySelector(".faint");
+          if (f && chatBox.children.length === 1) chatBox.innerHTML = "";
+          addChatLine(payload.new);
+        })
+        .subscribe();
+      async function sendChat() {
+        var input = root.querySelector("#streamChatInput");
+        var body = input.value.trim();
+        if (!body) return;
+        input.value = "";
+        var ins = await sb.from("stream_messages").insert({ stream_id: stream.id, sender_id: me.id, body: body.slice(0, 500) });
+        if (ins.error) { toast("Chat failed: " + errText(ins.error)); input.value = body; return; }
+        roomState.profiles[me.id] = me;
+        var chk = await sb.from("stream_messages").select("*").eq("stream_id", stream.id).eq("sender_id", me.id).order("created_at", { ascending: false }).limit(1);
+        if (chk.data && chk.data[0]) addChatLine(chk.data[0]);
+      }
+      root.querySelector("#streamChatSend").addEventListener("click", sendChat);
+      root.querySelector("#streamChatInput").addEventListener("keydown", function (e) { if (e.key === "Enter") sendChat(); });
+
+      /* gifts + balance for the sheet */
+      var gRes = await sb.from("gift_catalog").select("*").eq("active", true).order("price_coins", { ascending: true });
+      roomState.gifts = gRes.data || [];
+      var wRes = await sb.from("wallets").select("balance").eq("user_id", me.id).maybeSingle();
+      roomState.balance = wRes.data ? Number(wRes.data.balance) : 0;
+
+      connectRoom();
+    }
+    function closeStreamRoomSilent() {
+      if (roomState) {
+        roomState.dead = true;
+        if (roomState.chatChannel) { try { sb.removeChannel(roomState.chatChannel); } catch (e) {} }
+        teardownRoom();
+        roomState = null;
+        document.removeEventListener("visibilitychange", roomVisibility);
+      }
+    }
+
+    async function endStream(silent) {
+      if (!roomState) return;
+      var stream = roomState.stream;
+      try {
+        await sb.from("streams").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", stream.id).eq("host_id", me.id);
+      } catch (e) {}
+      closeStreamRoom();
+      if (!silent) toast("Your stream has ended.");
+      if (currentView === "home") navigate("home");
+    }
+
+    function setConn(text, cls) {
+      var s = $("#connState");
+      if (s) { s.textContent = text; s.className = "conn-pill " + cls; }
+    }
+
+    async function connectRoom() {
+      if (!roomState || roomState.dead) return;
+      var stream = roomState.stream;
+      setConn("Connecting…", "warn");
+      var LK = window.LivekitClient;
+      if (!LK) { setConn("Streaming library couldn't load — check your connection", "bad"); return; }
+      var tok;
+      try {
+        tok = await getLiveKitToken(stream.id, roomState.isHost ? "host" : "viewer");
+      } catch (e) {
+        setConn("Streaming server isn't connected yet", "bad");
+        var grid = $("#tileGrid");
+        if (grid) grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="big">Streaming server isn\'t connected yet</div>This stream isn\'t broadcasting right now. Please try again shortly — nothing here is faked in the meantime.</div>';
+        if (roomState.isHost) {
+          // Don't leave a phantom "live" row behind if we never broadcast.
+          sb.from("streams").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", stream.id).eq("host_id", me.id).then(function () {});
+        }
+        return;
+      }
+      if (!roomState || roomState.dead) return;
+      var room = new LK.Room({ adaptiveStream: true, dynacast: true });
+      roomState.room = room;
+      function bump() { collectParticipants(); }
+      room.on("participantConnected", bump);
+      room.on("participantDisconnected", bump);
+      room.on("trackSubscribed", bump);
+      room.on("trackUnsubscribed", bump);
+      room.on("trackPublished", bump);
+      room.on("trackUnpublished", bump);
+      room.on("localTrackPublished", bump);
+      room.on("localTrackUnpublished", bump);
+      room.on("reconnecting", function () { setConn("Reconnecting…", "warn"); });
+      room.on("reconnected", function () { setConn("Live — connected", "ok"); });
+      room.on("disconnected", function () { if (roomState && !roomState.hidden && !roomState.dead) setConn("Disconnected", "bad"); });
+      try {
+        await room.connect(tok.url || LIVEKIT_URL, tok.token);
+        if (!roomState || roomState.dead) { try { room.disconnect(); } catch (e) {} return; }
+        setConn(roomState.isHost ? "Live — you're broadcasting" : "Live — connected", "ok");
+        if (roomState.isHost || tok.canPublish) {
+          await room.localParticipant.setCameraEnabled(true).catch(function () {});
+          await room.localParticipant.setMicrophoneEnabled(true).catch(function () {});
+          roomState.micOn = true; roomState.camOn = true;
+        }
+        collectParticipants();
+      } catch (e) {
+        setConn("Couldn't connect to the stream — try leaving and rejoining", "bad");
+      }
+    }
+
+    async function collectParticipants() {
+      if (!roomState || !roomState.room) return;
+      var room = roomState.room;
+      var ids = [room.localParticipant.identity];
+      room.remoteParticipants.forEach(function (p) { ids.push(p.identity); });
+      roomState.partIds = ids;
+      var vc = $("#viewerCount"); if (vc) vc.textContent = ids.length + (ids.length === 1 ? " watching" : " watching");
+      var pc = $("#partsCount"); if (pc) pc.textContent = ids.length;
+      var missing = ids.filter(function (id) { return !roomState.profiles[id]; });
+      if (missing.length) {
+        var got = await fetchProfiles(missing);
+        Object.keys(got).forEach(function (k) { roomState.profiles[k] = got[k]; });
+      }
+      renderTiles();
+    }
+
+    function renderTiles() {
+      var grid = $("#tileGrid");
+      if (!grid || !roomState || !roomState.room) return;
+      var room = roomState.room;
+      var parts = [room.localParticipant];
+      room.remoteParticipants.forEach(function (p) { parts.push(p); });
+      grid.style.gridTemplateColumns = parts.length > 1 ? "repeat(auto-fit, minmax(150px, 1fr))" : "1fr";
+      grid.innerHTML = "";
+      parts.forEach(function (p) {
+        var isLocal = p === room.localParticipant;
+        var prof = roomState.profiles[p.identity];
+        var tile = el('<div class="tile"></div>');
+        var videoTrack = null;
+        p.videoTrackPublications.forEach(function (pub) { if (pub.track && pub.isSubscribed !== false) videoTrack = pub.track; });
+        if (!videoTrack) {
+          p.trackPublications.forEach(function (pub) { if (pub.kind === "video" && pub.track) videoTrack = pub.track; });
+        }
+        if (videoTrack) {
+          var v = videoTrack.attach();
+          v.setAttribute("playsinline", "");
+          if (isLocal) v.style.transform = "scaleX(-1)";
+          tile.appendChild(v);
+        } else {
+          var nc = el('<div class="no-cam"></div>');
+          nc.innerHTML = avatarHtml(prof, 72);
+          tile.appendChild(nc);
+        }
+        p.audioTrackPublications.forEach(function (pub) {
+          if (pub.track && !isLocal) tile.appendChild(pub.track.attach());
+        });
+        var who = el('<span class="who"></span>');
+        who.innerHTML = avatarHtml(prof, 22) + "<span>" + esc(isLocal ? "You" : displayName(prof)) + (p.identity === roomState.stream.host_id ? " · Host" : "") + "</span>";
+        tile.appendChild(who);
+        grid.appendChild(tile);
+      });
+    }
+
+    function openParticipantsSheet() {
+      if (!roomState) return;
+      var ids = roomState.partIds.length ? roomState.partIds : [me.id];
+      var sheet = openSheet(
+        "<h3>Who's watching</h3>" +
+        '<p class="muted small">Real people in this stream right now. Tap someone to see their profile.</p>' +
+        '<div class="stack" id="partList"></div>'
+      );
+      var list = sheet.querySelector("#partList");
+      ids.forEach(function (id) {
+        var p = roomState.profiles[id];
+        var row = el(
+          '<button type="button" class="part-row">' + avatarHtml(p, 42) +
+          '<span style="flex:1;min-width:0"><span style="display:block;font-weight:800">' + esc(id === me.id ? "You" : displayName(p)) + "</span>" +
+          '<span class="faint small">@' + esc(p ? p.username : "") + (id === roomState.stream.host_id ? " · Host" : "") + "</span></span>" +
+          (id !== me.id ? '<span class="faint">›</span>' : "") + "</button>"
+        );
+        if (id !== me.id) {
+          row.addEventListener("click", function () {
+            closeSheet();
+            participantActions(p);
+          });
+        }
+        list.appendChild(row);
+      });
+    }
+
+    function participantActions(p) {
+      if (!p) return;
+      var sheet = openSheet(
+        '<div style="display:flex;gap:13px;align-items:center">' + avatarHtml(p, 56) +
+        '<div><div style="font-weight:800;font-size:18px">' + esc(displayName(p)) + '</div><div class="faint">@' + esc(p.username) + "</div></div></div>" +
+        '<div class="stack mt">' +
+        '<button type="button" class="btn primary block" id="paProfile">View profile</button>' +
+        '<button type="button" class="btn ghost block" id="paFollow">Follow</button>' +
+        '<button type="button" class="btn ghost block" id="paMsg">Message</button>' +
+        '<button type="button" class="btn ghost block" id="paBlock">' + (blockedIds[p.id] ? "Unblock" : "Block") + "</button>" +
+        '<button type="button" class="btn ghost block" id="paReport">Report</button>' +
+        '<button type="button" class="btn ghost block" id="paClose">Close</button></div>'
+      );
+      sheet.querySelector("#paClose").addEventListener("click", closeSheet);
+      sheet.querySelector("#paProfile").addEventListener("click", function () { closeSheet(); openProfile(p); });
+      sheet.querySelector("#paFollow").addEventListener("click", async function () {
+        var ex = await sb.from("follows").select("follower_id").eq("follower_id", me.id).eq("following_id", p.id).maybeSingle();
+        if (ex.data) {
+          await sb.from("follows").delete().eq("follower_id", me.id).eq("following_id", p.id);
+          this.textContent = "Follow"; toast("Unfollowed " + displayName(p) + ".");
+        } else {
+          var i = await sb.from("follows").insert({ follower_id: me.id, following_id: p.id });
+          if (i.error) { toast(errText(i.error)); return; }
+          this.textContent = "Following ✓"; toast("Following " + displayName(p) + ".");
+        }
+      });
+      sheet.querySelector("#paMsg").addEventListener("click", async function () {
+        var convId = await findOrCreateConversation(p.id);
+        if (convId) { closeSheet(); closeStreamRoom(); openConversation(convId, p); }
+      });
+      sheet.querySelector("#paBlock").addEventListener("click", function () { toggleBlock(p, this); });
+      sheet.querySelector("#paReport").addEventListener("click", function () { reportSheet("user", p.id, p.id); });
+    }
+
+    function openGiftSheet() {
+      if (!roomState) return;
+      if (roomState.stream.host_id === me.id) { toast("You can't send gifts to your own stream."); return; }
+      var gifts = roomState.gifts;
+      var sheet = openSheet(
+        "<h3>Send a gift</h3>" +
+        '<p class="muted small">Your balance: <b style="color:var(--gold)">' + Number(roomState.balance || 0).toLocaleString() + " coins</b>. " +
+        "Gifts are charged by the server only when your real balance covers them.</p>" +
+        (gifts.length ? '<div class="gift-grid" id="giftGrid"></div>' : '<div class="empty"><div class="big">No gifts available</div>The gift shelf is empty right now.</div>') +
+        '<button type="button" class="btn ghost block mt" id="giftClose">Close</button>'
+      );
+      sheet.querySelector("#giftClose").addEventListener("click", closeSheet);
+      var grid = sheet.querySelector("#giftGrid");
+      if (!grid) return;
+      gifts.forEach(function (g) {
+        var card = el(
+          '<button type="button" class="gift-card">' + giftArt(g, 46) +
+          '<div class="gname">' + esc(g.name) + '</div>' +
+          '<div class="gprice"><span class="coin-ic"></span>' + Number(g.price_coins).toLocaleString() + "</div>" +
+          (g.rarity ? '<div class="faint" style="font-size:12px;text-transform:capitalize">' + esc(g.rarity) + "</div>" : "") + "</button>"
+        );
+        card.addEventListener("click", async function () {
+          card.disabled = true;
+          var original = card.innerHTML;
+          card.innerHTML = '<div style="padding:16px 0;font-weight:800">Sending…</div>';
+          var res = await sb.rpc("send_gift", {
+            p_recipient: roomState.stream.host_id,
+            p_gift: g.id,
+            p_stream: roomState.stream.id,
+            p_idempotency: newUuid()
+          });
+          if (res.error) {
+            var m = errText(res.error);
+            if (/insufficient|balance/i.test(m)) m = "Not enough coins — your balance is " + Number(roomState.balance || 0).toLocaleString() + " and this gift costs " + Number(g.price_coins).toLocaleString() + ".";
+            toast("Gift failed: " + m);
+            card.disabled = false; card.innerHTML = original;
+            return;
+          }
+          var w = await sb.from("wallets").select("balance").eq("user_id", me.id).maybeSingle();
+          if (w.data) {
+            roomState.balance = Number(w.data.balance);
+            $("#topBalance").textContent = roomState.balance.toLocaleString();
+          }
+          closeSheet();
+          var hostProf = roomState.profiles[roomState.stream.host_id];
+          showGiftFx(g, displayName(me));
+          toast("You sent a " + g.name + " to " + displayName(hostProf) + "! New balance: " + Number(roomState.balance || 0).toLocaleString() + " coins.");
+        });
+        grid.appendChild(card);
+      });
+    }
+
+    /* ---------------- MY PROFILE + SETTINGS ---------------- */
+    async function renderMyProfile(done) {
+      var wrap = el("<div></div>");
+      var counts = await Promise.all([
+        sb.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", me.id),
+        sb.from("follows").select("follower_id", { count: "exact", head: true }).eq("follower_id", me.id)
+      ]);
+      var p = me;
+      wrap.innerHTML =
+        (p.cover_url ? '<img class="cover-img" src="' + esc(p.cover_url) + '" alt="" style="margin-top:12px" />' : '<div class="cover-img" style="margin-top:12px"></div>') +
+        '<div style="display:flex;gap:14px;align-items:flex-end;margin-top:-38px;padding:0 10px;position:relative">' + avatarHtml(p, 84) +
+        '<div style="padding-bottom:4px"><div style="font-weight:800;font-size:19px;display:flex;gap:8px;align-items:center">' + esc(displayName(p)) + ' <span class="online-dot"></span></div>' +
+        '<div class="faint">@' + esc(p.username) + "</div></div></div>" +
+        (p.bio ? '<p style="margin:14px 2px 0;overflow-wrap:anywhere">' + esc(p.bio) + "</p>" : "") +
+        ((p.interests && p.interests.length) ? '<div class="row-gap mt">' + p.interests.map(function (i) { return '<span class="chip">' + esc(i) + "</span>"; }).join("") + "</div>" : "") +
+        '<div class="stat-row mt" style="margin-left:2px"><div class="stat"><b>' + (counts[0].count || 0) + "</b><span>Followers</span></div>" +
+        '<div class="stat"><b>' + (counts[1].count || 0) + "</b><span>Following</span></div></div>" +
+        profileLinksHtml(p) +
+        '<button type="button" class="menu-row" id="mWallet"><span>My wallet</span><span style="display:inline-flex;align-items:center;gap:7px"><span class="coin-ic"></span><span id="mBalance">' + esc($("#topBalance").textContent) + "</span> ›</span></button>" +
+        '<button type="button" class="menu-row" id="mSettings"><span>Edit profile &amp; settings</span><span class="faint">›</span></button>' +
+        '<button type="button" class="menu-row" id="mSignOut"><span>Sign out</span><span class="faint">›</span></button>' +
+        '<p class="small faint" style="text-align:center;margin-top:20px">Signed in as ' + esc(mySession && mySession.user ? mySession.user.email : "") + "</p>";
+      done(wrap);
+      wrap.querySelector("#mWallet").addEventListener("click", openWallet);
+      wrap.querySelector("#mSettings").addEventListener("click", openSettings);
+      wrap.querySelector("#mSignOut").addEventListener("click", doSignOut);
+      refreshWalletChip();
+    }
+
+    async function uploadProfileImage(bucket, file) {
+      var path = me.id + "/" + newUuid() + "-" + file.name.replace(/[^\w.\-]+/g, "_");
+      var up = await sb.storage.from(bucket).upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+      return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    }
+
+    function openSettings() {
+      var p = me;
+      var links = p.links || {};
+      var ov = openOverlay(
+        '<div class="overlay-bar"><button type="button" class="back-btn" id="sBack">‹ Back</button>' +
+        '<h2 style="margin:0;font-size:20px">Edit profile</h2></div>' +
+        '<div class="card stack">' +
+          '<div style="display:flex;gap:16px;align-items:center"><div id="sAvatarPrev">' + avatarHtml(p, 72) + "</div>" +
+          '<div><label class="btn ghost small" for="sAvatar" style="cursor:pointer">Change photo</label>' +
+          '<input type="file" id="sAvatar" accept="image/*" class="hidden" /><div class="small faint" style="margin-top:5px">Square photos look best</div></div></div>' +
+          '<div><label class="btn ghost small" for="sCover" style="cursor:pointer">Change cover photo</label>' +
+          '<input type="file" id="sCover" accept="image/*" class="hidden" /></div>' +
+        "</div>" +
+        '<form id="sForm" class="mt">' +
+          '<div class="field"><label for="sUsername">Username (lowercase, 3–24 characters)</label>' +
+          '<input class="input" id="sUsername" value="' + esc(p.username) + '" maxlength="24" /></div>' +
+          '<div class="field"><label for="sName">Display name</label>' +
+          '<input class="input" id="sName" value="' + esc(p.display_name || "") + '" maxlength="60" /></div>' +
+          '<div class="field"><label for="sBio">Bio</label>' +
+          '<textarea class="textarea" id="sBio" maxlength="300">' + esc(p.bio || "") + "</textarea></div>" +
+          '<div class="field"><label for="sInterests">Interests (separate with commas)</label>' +
+          '<input class="input" id="sInterests" value="' + esc((p.interests || []).join(", ")) + '" /></div>' +
+          '<div class="field"><label for="sWeb">Website link</label>' +
+          '<input class="input" id="sWeb" type="url" value="' + esc(links.website || "") + '" placeholder="https://…" /></div>' +
+          '<div class="field"><label for="sInsta">Instagram link</label>' +
+          '<input class="input" id="sInsta" type="url" value="' + esc(links.instagram || "") + '" placeholder="https://…" /></div>' +
+          '<div class="field"><label for="sTiktok">TikTok link</label>' +
+          '<input class="input" id="sTiktok" type="url" value="' + esc(links.tiktok || "") + '" placeholder="https://…" /></div>' +
+          '<div class="field"><label for="sThrone">Throne wishlist link</label>' +
+          '<input class="input" id="sThrone" type="url" value="' + esc(p.throne_link || "") + '" placeholder="https://throne.com/…" /></div>' +
+          '<div class="card" style="display:flex;align-items:center;gap:14px"><div style="flex:1"><b>Show when I\'m online</b>' +
+          '<div class="small muted">When off, nobody sees your green online dot.</div></div>' +
+          '<button type="button" class="switch' + (p.show_online !== false ? " on" : "") + '" id="sOnline" aria-label="Toggle show online status"></button></div>' +
+          '<div id="sMsg" style="margin-top:14px"></div>' +
+          '<button class="btn primary block mt" type="submit" id="sSave" style="min-height:58px">Save changes</button>' +
+        "</form>"
+      );
+      ov.querySelector("#sBack").addEventListener("click", function () { closeOverlay(); });
+      var showOnline = p.show_online !== false;
+      ov.querySelector("#sOnline").addEventListener("click", function () {
+        showOnline = !showOnline;
+        this.classList.toggle("on", showOnline);
+      });
+      ov.querySelector("#sAvatar").addEventListener("change", async function () {
+        var f = this.files && this.files[0];
+        if (!f) return;
+        try {
+          toast("Uploading photo…");
+          var url = await uploadProfileImage("avatars", f);
+          var u = await sb.from("profiles").update({ avatar_url: url }).eq("id", me.id).select("*").single();
+          if (u.error) throw u.error;
+          me = u.data; profileCache[me.id] = me;
+          ov.querySelector("#sAvatarPrev").innerHTML = avatarHtml(me, 72);
+          toast("Profile photo updated!");
+        } catch (e) { toast("Photo upload failed: " + errText(e)); }
+      });
+      ov.querySelector("#sCover").addEventListener("change", async function () {
+        var f = this.files && this.files[0];
+        if (!f) return;
+        try {
+          toast("Uploading cover…");
+          var url = await uploadProfileImage("covers", f);
+          var u = await sb.from("profiles").update({ cover_url: url }).eq("id", me.id).select("*").single();
+          if (u.error) throw u.error;
+          me = u.data; profileCache[me.id] = me;
+          toast("Cover photo updated!");
+        } catch (e) { toast("Cover upload failed: " + errText(e)); }
+      });
+      ov.querySelector("#sForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var msg = ov.querySelector("#sMsg");
+        var btn = ov.querySelector("#sSave");
+        var username = ov.querySelector("#sUsername").value.trim().toLowerCase();
+        if (!/^[a-z0-9_.-]{3,24}$/.test(username)) {
+          msg.innerHTML = '<div class="err-box">Username must be 3–24 characters: lowercase letters, numbers, dots, dashes or underscores.</div>';
+          return;
+        }
+        var newLinks = {};
+        var web = ov.querySelector("#sWeb").value.trim();
+        var insta = ov.querySelector("#sInsta").value.trim();
+        var tiktok = ov.querySelector("#sTiktok").value.trim();
+        if (web) newLinks.website = web;
+        if (insta) newLinks.instagram = insta;
+        if (tiktok) newLinks.tiktok = tiktok;
+        var interests = ov.querySelector("#sInterests").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 12);
+        btn.disabled = true; btn.textContent = "Saving…";
+        var u = await sb.from("profiles").update({
+          username: username,
+          display_name: ov.querySelector("#sName").value.trim() || null,
+          bio: ov.querySelector("#sBio").value.trim() || null,
+          interests: interests,
+          links: newLinks,
+          throne_link: ov.querySelector("#sThrone").value.trim() || null,
+          show_online: showOnline
+        }).eq("id", me.id).select("*").single();
+        btn.disabled = false; btn.textContent = "Save changes";
+        if (u.error) {
+          var m = errText(u.error);
+          if (/duplicate|unique/i.test(m)) m = "That username is already taken — try another.";
+          msg.innerHTML = '<div class="err-box">' + esc(m) + "</div>";
+          return;
+        }
+        me = u.data; profileCache[me.id] = me;
+        msg.innerHTML = '<div class="ok-box">Saved! Your profile is updated everywhere.</div>';
+        toast("Profile saved.");
+      });
+    }
+
+    /* ---------------- offline banner ---------------- */
+    function syncOffline() { $("#offlineBar").classList.toggle("show", !navigator.onLine); }
+    window.addEventListener("online", syncOffline);
+    window.addEventListener("offline", syncOffline);
+
+    /* ---------------- boot ---------------- */
+    (function boot() {
+      if (!sb) {
+        showBoot("The app library couldn't load. Check your internet connection and refresh the page.");
+        var bs = $("#bootSpinner"); if (bs) bs.style.display = "none";
+        return;
+      }
+      if (!window.LivekitClient) {
+        // Streaming library failed to load — the app still works; the stream
+        // room shows an honest connection error when opened.
+        console.warn("LiveKit client library not loaded.");
+      }
+      initAuth();
+      syncOffline();
+      sb.auth.onAuthStateChange(function (event, session) {
+        if (event === "SIGNED_OUT") { mySession = null; }
+        if (session) mySession = session;
+      });
+      sb.auth.getSession().then(async function (res) {
+        var session = res.data ? res.data.session : null;
+        if (session) {
+          try { await enterApp(session); }
+          catch (e) { showAuth(); }
+        } else {
+          showAuth();
+        }
+      }).catch(function () { showAuth(); });
+    })();
+    </script>
+  </body>
+</html>
