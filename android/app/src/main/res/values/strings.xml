@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VibeLive</string>
+    <string name="title_activity_main">VibeLive</string>
+    <string name="package_name">com.shelleywrites.vibelive</string>
+    <string name="custom_url_scheme">com.shelleywrites.vibelive</string>
+</resources>
