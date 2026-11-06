@@ -17,6 +17,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -77,3 +80,37 @@ jobs:
         with:
           name: vibelive-release-aab-unsigned
           path: android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Sign the release AAB
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "KEYSTORE_PASSWORD secret is not set. Add it in the repo Settings, Secrets and variables, Actions, then re-run this workflow."
+            exit 1
+          fi
+          cd android
+          if [ -f upload-keystore.enc ]; then
+            echo "Decrypting existing upload keystore"
+            openssl enc -d -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEYSTORE_PASSWORD" -in upload-keystore.enc -out upload-keystore.jks
+          else
+            echo "Creating new upload keystore and saving it encrypted in the repo"
+            keytool -genkeypair -v -keystore upload-keystore.jks -alias vibelive-upload -keyalg RSA -keysize 2048 -validity 10000 -storepass "$KEYSTORE_PASSWORD" -keypass "$KEYSTORE_PASSWORD" -dname "CN=VibeLive, O=Mizzfitt App Studio, C=CA"
+            openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEYSTORE_PASSWORD" -in upload-keystore.jks -out upload-keystore.enc
+            git config user.name "vibelive-build"
+            git config user.email "build@vibelive.local"
+            git add upload-keystore.enc
+            git commit -m "Add encrypted upload keystore for Play Console signing [skip ci]"
+            git push
+          fi
+          cp app/build/outputs/bundle/release/app-release.aab app-release-signed.aab
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -keypass "$KEYSTORE_PASSWORD" app-release-signed.aab vibelive-upload
+          jarsigner -verify app-release-signed.aab
+          rm -f upload-keystore.jks
+
+      - name: Save the signed release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibelive-release-aab-signed
+          path: android/app-release-signed.aab
