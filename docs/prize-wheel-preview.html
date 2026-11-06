@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prize Wheel Preview</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14101f; color: #fff; margin: 0; padding: 20px 16px 40px; text-align: center; }
+  h1 { font-size: 30px; margin: 8px 0; }
+  p { font-size: 18px; line-height: 1.5; }
+  .note { background: #2a2140; border-radius: 12px; padding: 12px; font-size: 17px; }
+  .wheel-wrap { position: relative; width: min(92vw, 380px); margin: 20px auto; }
+  .pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); font-size: 34px; z-index: 2; }
+  svg { width: 100%; height: auto; display: block; }
+  #wheel { transition: transform 4s cubic-bezier(.12,.8,.16,1); }
+  button { font-size: 20px; padding: 16px 26px; border-radius: 14px; border: none; background: #ff5fa2; color: #fff; font-weight: bold; min-height: 56px; cursor: pointer; }
+  button.secondary { background: #4dd0e1; color: #14101f; margin-left: 8px; }
+  #result { font-size: 24px; font-weight: bold; min-height: 36px; margin: 16px 0; }
+  .edit { background: #2a2140; border-radius: 12px; padding: 16px; margin-top: 24px; text-align: left; }
+  .edit h2 { font-size: 22px; text-align: center; margin-top: 0; }
+  .edit label { display: block; font-size: 17px; margin: 10px 0 4px; }
+  .edit input { width: 100%; box-sizing: border-box; font-size: 18px; padding: 12px; border-radius: 10px; border: none; }
+  .edit button { width: 100%; margin-top: 16px; }
+  @media (prefers-reduced-motion: reduce) { #wheel { transition: none; } }
+</style>
+</head>
+<body>
+<h1>Prize Wheel</h1>
+<p class="note">Preview only. Not in VibeLive yet. Tap Spin, then tap Edit prizes to type your own prizes.</p>
+
+<div class="wheel-wrap">
+  <div class="pointer" aria-hidden="true">&#9660;</div>
+  <svg viewBox="0 0 300 300" role="img" aria-label="Prize wheel">
+    <g id="wheel"></g>
+    <circle cx="150" cy="150" r="34" fill="#fff"></circle>
+    <text x="150" y="156" text-anchor="middle" font-size="16" font-weight="bold" fill="#14101f">SPIN</text>
+  </svg>
+</div>
+
+<div id="result" aria-live="polite"></div>
+<button id="spinBtn" type="button">Spin the wheel</button>
+<button id="soundBtn" type="button" class="secondary">Sound: on</button>
+
+<div class="edit">
+  <h2>Edit prizes</h2>
+  <p style="text-align:center">These are starter prizes. Change any of them, then tap Save prizes.</p>
+  <div id="prizeInputs"></div>
+  <button id="saveBtn" type="button">Save prizes</button>
+</div>
+
+<script>
+var prizes = ["Shoutout", "Song request", "Free gift", "Co-host spot", "Profile spotlight", "Bonus coins", "Dance break", "Your pick"];
+var colors = ["#ff5fa2", "#ffb347", "#ffe14d", "#7ddb6a", "#4dd0e1", "#7b8cff", "#c77dff", "#ff6b6b"];
+var currentRotation = 0;
+var spinning = false;
+var soundOn = true;
+var audioCtx = null;
+
+function polar(cx, cy, r, deg) {
+  var rad = (deg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function buildWheel() {
+  var g = document.getElementById("wheel");
+  g.innerHTML = "";
+  var ns = "http://www.w3.org/2000/svg";
+  for (var i = 0; i < prizes.length; i++) {
+    var start = i * 45, end = start + 45;
+    var p1 = polar(150, 150, 148, start);
+    var p2 = polar(150, 150, 148, end);
+    var path = document.createElementNS(ns, "path");
+    path.setAttribute("d", "M150,150 L" + p1[0].toFixed(1) + "," + p1[1].toFixed(1) + " A148,148 0 0 1 " + p2[0].toFixed(1) + "," + p2[1].toFixed(1) + " Z");
+    path.setAttribute("fill", colors[i % colors.length]);
+    g.appendChild(path);
+    var mid = start + 22.5;
+    var tp = polar(150, 150, 102, mid);
+    var text = document.createElementNS(ns, "text");
+    text.setAttribute("x", tp[0].toFixed(1));
+    text.setAttribute("y", tp[1].toFixed(1));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("font-size", "14");
+    text.setAttribute("font-weight", "bold");
+    text.setAttribute("fill", "#222");
+    text.setAttribute("transform", "rotate(" + mid + " " + tp[0].toFixed(1) + " " + tp[1].toFixed(1) + ")");
+    text.textContent = prizes[i];
+    g.appendChild(text);
+  }
+  g.style.transform = "rotate(" + currentRotation + "deg)";
+}
+
+function tone(freq, start, dur, type) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime + start);
+    gain.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + start + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(audioCtx.currentTime + start);
+    osc.stop(audioCtx.currentTime + start + dur + 0.05);
+  } catch (e) { /* sound is optional */ }
+}
+
+function fanfare() {
+  tone(523, 0, 0.18, "triangle");
+  tone(659, 0.15, 0.18, "triangle");
+  tone(784, 0.3, 0.35, "triangle");
+}
+
+function spin() {
+  if (spinning) return;
+  spinning = true;
+  document.getElementById("result").textContent = "Spinning...";
+  var winner = Math.floor(Math.random() * prizes.length);
+  var center = winner * 45 + 22.5;
+  var target = currentRotation + 360 * 5 + ((270 - center - currentRotation) % 360 + 360) % 360;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var wheel = document.getElementById("wheel");
+  if (reduce) { wheel.style.transition = "none"; }
+  currentRotation = target;
+  wheel.style.transform = "rotate(" + target + "deg)";
+  var ticks = 0;
+  var tickTimer = setInterval(function () {
+    ticks++;
+    tone(880, 0, 0.05, "square");
+    if (ticks > 18) clearInterval(tickTimer);
+  }, 200);
+  var finish = function () {
+    clearInterval(tickTimer);
+    spinning = false;
+    document.getElementById("result").textContent = "Winner: " + prizes[winner];
+    fanfare();
+  };
+  if (reduce) { finish(); } else { setTimeout(finish, 4100); }
+}
+
+function buildInputs() {
+  var box = document.getElementById("prizeInputs");
+  box.innerHTML = "";
+  prizes.forEach(function (p, i) {
+    var label = document.createElement("label");
+    label.textContent = "Prize " + (i + 1);
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = p;
+    input.id = "prize" + i;
+    box.appendChild(label);
+    box.appendChild(input);
+  });
+}
+
+document.getElementById("spinBtn").addEventListener("click", spin);
+document.getElementById("soundBtn").addEventListener("click", function () {
+  soundOn = !soundOn;
+  this.textContent = soundOn ? "Sound: on" : "Sound: off";
+});
+document.getElementById("saveBtn").addEventListener("click", function () {
+  for (var i = 0; i < prizes.length; i++) {
+    var v = document.getElementById("prize" + i).value.trim();
+    if (v) prizes[i] = v;
+  }
+  currentRotation = 0;
+  buildWheel();
+  document.getElementById("result").textContent = "Prizes saved. Spin to try them.";
+});
+
+buildWheel();
+buildInputs();
+</script>
+</body>
+</html>
