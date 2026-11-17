@@ -1135,14 +1135,18 @@
         var others = await sb.from("conversation_members").select("conversation_id").eq("user_id", otherId).in("conversation_id", mine.ids);
         if (!others.error && others.data && others.data.length) return others.data[0].conversation_id;
       }
-      var conv = await sb.from("conversations").insert({}).select("id").single();
-      if (conv.error) { toast("Couldn't start the conversation: " + errText(conv.error)); return null; }
-      var mem = await sb.from("conversation_members").insert([
-        { conversation_id: conv.data.id, user_id: me.id },
-        { conversation_id: conv.data.id, user_id: otherId }
-      ]);
-      if (mem.error) { toast("Couldn't start the conversation: " + errText(mem.error)); return null; }
-      return conv.data.id;
+      // Create the row with a client-made id and no select: asking the server to
+  // return the new row fails RLS, because the read rule only lets members see
+  // a conversation and nobody is a member yet.
+  var convId = newUuid();
+  var conv = await sb.from("conversations").insert({ id: convId });
+  if (conv.error) { toast("Couldn\'t start the conversation: " + errText(conv.error)); return null; }
+  var mem = await sb.from("conversation_members").insert([
+    { conversation_id: convId, user_id: me.id },
+    { conversation_id: convId, user_id: otherId }
+  ]);
+  if (mem.error) { toast("Couldn\'t start the conversation: " + errText(mem.error)); return null; }
+  return convId;
     }
 
     var chatChannel = null;
