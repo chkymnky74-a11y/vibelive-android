@@ -262,6 +262,7 @@
       .gift-card:disabled { opacity: .5; }
       #giftFx { position: fixed; inset: 0; z-index: 80; display: none; align-items: center; justify-content: center; pointer-events: none; }
       #giftFx.show { display: flex; }
+#giftFx video { max-width: 92vw; max-height: 68vh; border-radius: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
       #giftFx .fx-inner { text-align: center; animation: fxpop 2.6s ease forwards; }
       #giftFx svg { width: 150px; height: 150px; filter: drop-shadow(0 12px 34px rgba(255,46,99,.45)); }
       #giftFx .fx-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 24px; margin-top: 10px; text-shadow: 0 2px 14px rgba(0,0,0,.8); }
@@ -1268,7 +1269,7 @@
         var other = profs[otherId];
         giftHtml += '<div class="tx-row"><span><span style="font-weight:700">' + esc(giftNames[r.t.gift_id] || "Gift") + "</span> " +
           '<span class="muted small">' + (r.dir === "sent" ? "to " : "from ") + esc(displayName(other)) + '</span><br><span class="faint small">' + esc(timeAgo(r.t.created_at)) + ' ago</span></span>' +
-          '<span class="tx-amt ' + (r.dir === "sent" ? "neg" : "pos") + '">' + (r.dir === "sent" ? "−" : "+") + Number(r.t.coins || 0).toLocaleString() + "</span></div>";
+          '<span class="tx-amt ' + (r.dir === "sent" ? "neg" : "pos") + '">' + (r.dir === "sent" ? "−" : "+") + Number(r.t.price_coins || 0).toLocaleString() + "</span></div>";
       });
       inner.innerHTML =
         '<div class="overlay-bar"><button type="button" class="back-btn" id="wBack2">‹ Back</button>' +
@@ -1277,11 +1278,29 @@
         '<div class="amt"><span class="coin-ic"></span>' + balance.toLocaleString() + "</div>" +
         '<div class="small" style="opacity:.92">This is your real balance, stored safely on the server.</div></div>' +
         '<div class="ok-box mt">Coin purchases arrive with the Android release. Until then, your balance only changes when gifts are sent or received.</div>' +
+        '<button type="button" class="btn block mt" id="claimTestCoins" style="width:100%">Get 500 free test coins</button>' +
+        '<p class="muted small" style="margin-top:6px">Free test coins for closed testing only. One claim per account. Test coins are in-app credits only and can never be cashed out.</p>' +
         '<h3 class="section-title">Coin history</h3>' +
         (txHtml ? '<div class="card" style="padding:4px 16px">' + txHtml + "</div>" : '<div class="empty"><div class="big">No coin activity yet</div>Your balance starts at 0 — nothing here is made up.</div>') +
         '<h3 class="section-title">Gifts sent &amp; received</h3>' +
         (giftHtml ? '<div class="card" style="padding:4px 16px">' + giftHtml + "</div>" : '<div class="empty"><div class="big">No gifts yet</div>Gifts you send during live streams will show up here.</div>');
       inner.querySelector("#wBack2").addEventListener("click", closeOverlay);
+      var claimBtn = inner.querySelector("#claimTestCoins");
+      if (claimBtn) claimBtn.addEventListener("click", async function () {
+        claimBtn.disabled = true;
+        claimBtn.textContent = "Claiming\u2026";
+        var res = await sb.rpc("claim_test_coins");
+        if (res.error) {
+          var m = errText(res.error);
+          if (/already_claimed/i.test(m)) m = "You already claimed your 500 free test coins.";
+          toast(m);
+          claimBtn.disabled = false;
+          claimBtn.textContent = "Get 500 free test coins";
+          return;
+        }
+        toast("500 free test coins added. New balance: " + Number(res.data || 0).toLocaleString() + " coins.");
+        openWallet();
+      });
       $("#topBalance").textContent = balance.toLocaleString();
     }
 
@@ -1437,8 +1456,27 @@
       }
       return '<svg viewBox="0 0 100 100" width="' + (size || 46) + '" height="' + (size || 46) + '" aria-hidden="true">' + body + "</svg>";
     }
+    var CLIP_BASE = "https://raw.githubusercontent.com/chkymnky74-a11y/vibelive-gift-animations/main/gift-clips/";
+    function giftClipUrl(g) {
+      var a = (g && g.artwork) || "";
+      if (a.indexOf("clip/") === 0) return CLIP_BASE + a.slice(5) + ".mp4";
+      return null;
+    }
     function showGiftFx(gift, fromName) {
       var fx = $("#giftFx");
+      var clip = giftClipUrl(gift);
+      if (clip) {
+        fx.innerHTML = '<div class="fx-inner"><video src="' + clip + '" autoplay playsinline muted></video>' +
+          '<div class="fx-name">' + esc(gift.name) + '</div>' +
+          (fromName ? '<div style="font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.8)">from ' + esc(fromName) + "</div>" : "") + "</div>";
+        fx.classList.add("show");
+        var vid = fx.querySelector("video");
+        var done = false;
+        var hideFx = function () { if (done) return; done = true; fx.classList.remove("show"); fx.innerHTML = ""; };
+        if (vid) { vid.addEventListener("ended", hideFx); vid.addEventListener("error", hideFx); }
+        setTimeout(hideFx, 9000);
+        return;
+      }
       fx.innerHTML = '<div class="fx-inner">' + giftArt(gift, 150) +
         '<div class="fx-name">' + esc(gift.name) + '</div>' +
         (fromName ? '<div style="font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.8)">from ' + esc(fromName) + "</div>" : "") + "</div>";
@@ -1619,6 +1657,13 @@
           var f = chatBox.querySelector(".faint");
           if (f && chatBox.children.length === 1) chatBox.innerHTML = "";
           addChatLine(payload.new);
+        })
+        .on("broadcast", { event: "gift" }, function (payload) {
+          var p = payload.payload || {};
+          if (!p.gift_id || p.from_id === me.id) return;
+          var g = null;
+          (roomState.gifts || []).forEach(function (x) { if (x.id === p.gift_id) g = x; });
+          if (g) showGiftFx(g, p.from_name || null);
         })
         .subscribe();
       async function sendChat() {
@@ -1851,7 +1896,8 @@
           '<button type="button" class="gift-card">' + giftArt(g, 46) +
           '<div class="gname">' + esc(g.name) + '</div>' +
           '<div class="gprice"><span class="coin-ic"></span>' + Number(g.price_coins).toLocaleString() + "</div>" +
-          (g.rarity ? '<div class="faint" style="font-size:12px;text-transform:capitalize">' + esc(g.rarity) + "</div>" : "") + "</button>"
+          (g.rarity ? '<div class="faint" style="font-size:12px;text-transform:capitalize">' + esc(g.rarity) + "</div>" : "") +
+          (giftClipUrl(g) ? '<div class="faint" style="font-size:11px">\u25b6 animated clip</div>' : "") + "</button>"
         );
         card.addEventListener("click", async function () {
           card.disabled = true;
@@ -1878,6 +1924,7 @@
           closeSheet();
           var hostProf = roomState.profiles[roomState.stream.host_id];
           showGiftFx(g, displayName(me));
+          if (roomState.chatChannel) { try { roomState.chatChannel.send({ type: "broadcast", event: "gift", payload: { gift_id: g.id, from_id: me.id, from_name: displayName(me) } }); } catch (e) {} }
           toast("You sent a " + g.name + " to " + displayName(hostProf) + "! New balance: " + Number(roomState.balance || 0).toLocaleString() + " coins.");
         });
         grid.appendChild(card);
